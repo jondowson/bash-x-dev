@@ -1,0 +1,50 @@
+function f_utils_containers(){
+
+# About:
+# - Functions for handling containers.
+
+# ---------------------------------------------------------------
+# [1] Declare variables with local scope to this function. 
+
+local action;
+local action_string;
+
+# ---------------------------------------------------------------
+# [2] Assign the passed parameters.
+
+action="${1}";
+action_string="${2}";
+
+# ---------------------------------------------------------------
+# [3] Select the required action from the case statement. 
+
+case "${action}" in
+
+# ---------------------------------------------------------------
+	"get_container_id")
+        # usage example:
+        # result=$(f_utils_containers "get_container_id" "grep 6-,grep -v 6->");
+        # Or an example to pass these strings from json.
+        # result=$(f_utils_containers "get_container_id" "${tests_group1_t1_containerfilter}");
+		result="$(${vf_cmd_docker} ps)";
+        OLDIFS=$IFS;
+        IFS="|";
+        for v in ${action_string}
+        do
+            # Apply the grep filters to identify the container id. 
+            # grep -v ignores matching results.
+            if [[ "${v}" == *"-v"* ]];then
+                v=$(f_utils_strings_bpe "del_fromleft_upto_including" "${v}" "-v");
+                result=$(grep -v ${v} <(echo ${result}));
+            else
+                v=$(f_utils_strings_bpe "del_fromleft_upto_including" "${v}" "grep");
+                result=$(grep ${v} <(echo ${result}));
+            fi;
+        done;
+        IFS=$OLDIFS;
+        # The docker container id is always in column 1 of the remaining row. 
+        result=$(echo ${result} | awk '{print $1}');; 
+
+esac;
+printf "%s" "${result}";
+};

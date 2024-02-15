@@ -1,0 +1,8 @@
+function f_remote_remove_framework(){
+
+# ---------------------------------------------------------------
+# [1] Remove existing remote framework and project folders.
+
+# The called function checks for empty paths and will exit if found!
+f_remote_remove_folder "${SSH_PATH_TARGET}bash-x-projects";
+};

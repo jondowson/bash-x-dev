@@ -1,0 +1,128 @@
+function f_dependency_step2(){
+
+# About:
+# - Check that a dependency is present on the machine.
+
+# Usage:
+# f_dependency_checker "vj_framework_dependencies_os_all";
+
+# ---------------------------------------------------------------
+# [2] Declare local variables with scope for this function only.
+
+local array_to_check;
+local char_count;
+local dependency;
+local version;
+
+# ---------------------------------------------------------------
+# [3] Since all the dependency's names are mixed together in the A_variables_all array, need to filter them.
+
+# Pass as argument the prefix of the name of the dependencies to check. Ex:
+# vj_framework_dependencies_os_all
+# vj_framework_dependencies_os_mac
+# vj_project_dependencies
+array_to_check="${1}";
+
+# source is either 'framework' or 'project'.
+source=$(f_utils_strings_bpe "del_fromleft_upto_including_first" "${array_to_check}" "_");
+source=$(f_utils_strings_bpe "keep_fromleft_upto_excluding_first" "${source}" "_");
+
+for k in "${!A_variables_all[@]}"
+do
+    
+    if [[ "${k}" == *"${array_to_check}_"* ]];then
+        
+        # # Ensure that will not go a level too deep. --> no need + could be different if check for framework or project
+        # char_count=$(f_utils_strings "count_chars" "${k}" "_");
+        # if [[ "${char_count}" -gt "5" ]];then
+        #     continue;
+        # fi;
+        
+# ---------------------------------------------------------------
+# [4] Get the name of the dependency and the version associated in the array.
+        
+        # Ignore the about element as its not required.
+        if [[ "${k}" == *"project_dependencies_make_about"* ]] || [[ "${k}" == *"project_dependencies_execute_about"* ]];then
+            continue;
+        fi;
+        # Put the project json into either 'make' or 'execute' arrays.
+        if [[ "${k}" == *"project_dependencies_make"* ]];then
+            project_subcategory="project_dependencies_make";
+        elif [[ "${k}" == *"project_dependencies_execute"* ]];then
+            project_subcategory="project_dependencies_execute";       
+        fi;
+        
+        # e.g. dependency=jq version='^1.5'
+        dependency=$(f_utils_strings_bpe "del_fromleft_upto_including" "${k}" "_");
+        version=${A_variables_all[${k}]};
+
+# ---------------------------------------------------------------
+# [5] Check if the dependency is installed using various mechanisms.
+
+        # Check if dependency present with which
+        which ${dependency} > /dev/null 2>&1;
+        if [[ ${?} != 0 ]];then
+            # Check if dependency present with man
+            man ${dependency} > /dev/null 2>&1;
+            if [[ ${?} != 0 ]];then
+                # Check the OS used to do some more checks OS based
+                if [[ "${vf_os_identify}" == "Mac" ]]; then
+                    # Check if brew is installed
+                    which brew > /dev/null 2>&1;
+                    if [[ ${?} == 0 ]];then
+                        # Check if dependency is present ignore case but match on full string
+                        brew list | grep -iw ${dependency} > /dev/null 2>&1;
+                        if [[ ${?} != 0 ]];then
+                            if [[ "${source}" == "framework" ]];then
+                                A_dependency_checked["${dependency}"]="false";
+                                A_dependency_installed["${dependency}"]="none";
+                                continue;
+                            elif [[ "${source}" == "project" ]];then
+                                A_dependency_checked_project["${dependency}"]="false";
+                                A_dependency_installed_project["${dependency}"]="none";
+                                if [[ "${project_subcategory}" == *"project_dependencies_make"* ]];then
+                                    A_dependency_checked_project_make["${dependency}"]="false";
+                                    A_dependency_installed_project_make["${dependency}"]="none";
+                                elif [[ "${project_subcategory}" == *"project_dependencies_execute"* ]];then
+                                    A_dependency_checked_project_execute["${dependency}"]="false";
+                                    A_dependency_installed_project_execute["${dependency}"]="none";   
+                                fi;
+                                continue;
+                            fi;
+                        fi;
+                    fi;
+                else
+                    # Check if dpkg is installed
+                    which dpkg > /dev/null 2>&1;
+                    if [[ ${?} == 0 ]];then
+                        # Check if dependency present with dpkg
+                        dpkg -s ${dependency} 2>/dev/null;
+                        if [[ $? != 0 ]];then
+                            if [[ "${source}" == "framework" ]];then
+                                A_dependency_checked["${dependency}"]="false";
+                                A_dependency_installed["${dependency}"]="none";
+                            elif [[ "${source}" == "project" ]];then
+                                A_dependency_checked_project["${dependency}"]="false";
+                                A_dependency_installed_project["${dependency}"]="none";
+                                if [[ "${project_subcategory}" == *"project_dependencies_make"* ]];then
+                                    A_dependency_checked_project_make["${dependency}"]="false";
+                                    A_dependency_installed_project_make["${dependency}"]="none";
+                                elif [[ "${project_subcategory}" == *"project_dependencies_execute"* ]];then
+                                    A_dependency_checked_project_execute["${dependency}"]="false";
+                                    A_dependency_installed_project_execute["${dependency}"]="none";   
+                                fi;
+                            fi;
+                            continue;
+                        fi;
+                    fi; 
+                fi;
+            fi;
+        fi;
+
+# ---------------------------------------------------------------
+# [6] Call the function to check which version of the dependency is installed and if it meets the requirements.
+
+        f_dependency_step3 ${dependency} ${version} ${source} ${project_subcategory};
+    fi;
+done;
+};

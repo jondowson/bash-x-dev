@@ -1,0 +1,47 @@
+f_ssh_cmd(){
+
+# incoming parameters.
+cmd_remote="${1}";
+err_code="${2}";
+
+if [[ "${vf_framework_flags_behaviour_remotecompute}" == "true" ]];then
+        log_path="${vp_project_rootpath}input_output/logs/subprocesses_${vf_local_hostname_short}.log";        
+else
+        log_path="${vp_path_folder_timestamp_tests_logs_sublocal}${loop_source_hostname}.log";
+fi;
+
+# -P 'ass' overides the default 'assword' search that sshpass does when responding to the prompt and so will include P/passphrase.
+case "${AUTH_APPROACH}" in
+# ---------------------------------------------------------------
+	"cicd_user_pass")
+        sshpass -p ${PASSWORD} -P ass \
+        ssh -o LogLevel=INFO -oStrictHostKeyChecking=no -o ConnectTimeout=7 ${USERNAME}@${loop_source_pubIp} "${cmd_remote}" >> "${log_path}";
+        ;;
+
+# ---------------------------------------------------------------
+	"user_pass")
+        sshpass -p ${PASSWORD} -P ass \
+        ssh -o LogLevel=INFO -oStrictHostKeyChecking=no -o ConnectTimeout=7 ${USERNAME}@${loop_source_pubIp} "${cmd_remote}" >> "${log_path}";
+        ;;
+
+# ---------------------------------------------------------------
+	"user_pass_key")
+        sshpass -p ${PASSWORD} -P ass \
+        ssh -o LogLevel=INFO -oStrictHostKeyChecking=no -o ConnectTimeout=7 -i ${SSH_PATH_KEY} ${USERNAME}@${loop_source_pubIp} "${cmd_remote}" >> "${log_path}";
+        ;;
+
+# ---------------------------------------------------------------
+	"user_key")
+        ssh -o LogLevel=INFO -oStrictHostKeyChecking=no -o ConnectTimeout=7 -i ${SSH_PATH_KEY} ${USERNAME}@${loop_source_pubIp} "${cmd_remote}" >> "${log_path}";
+        ;;
+esac;
+res="${?}";
+
+# Either echo the return code back to the calling function or handle any error. 
+if [[ "${err_code}" == "return_result" ]];then
+    echo "${res}";
+elif [[ "$res" != "0" ]]; then
+    f_errors_exitmessages "${FUNCNAME[0]}: $((LINENO))" "${err_code}";  
+    if [[ "${vf_framework_flags_behaviour_fastfail}" == "true" ]]; then f_stages_functions_final; else exit ${err_code}; fi;
+fi;
+};

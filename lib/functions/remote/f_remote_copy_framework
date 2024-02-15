@@ -1,0 +1,12 @@
+function f_remote_copy_framework(){
+
+# ---------------------------------------------------------------
+# [1] Copy the local framework to the remote server.
+
+f_ssh_scp_send "${vf_path_framework_home}" "${SSH_PATH_TARGET}bash-x" "4";
+
+# ---------------------------------------------------------------
+# [2] Change bash-x permissions to executable.
+
+f_ssh_cmd "chmod -R 777 ${SSH_PATH_TARGET}bash-x" "6";
+};

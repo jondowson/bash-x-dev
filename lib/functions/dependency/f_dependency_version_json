@@ -1,0 +1,110 @@
+function f_dependency_version_json(){
+
+    # About:
+    # - Construct the string that will be transformed in json thanks to jq.
+
+    # Create a nice json object
+    # {
+    #   "dependency": {
+    #     "name": {
+    #       "meet_requirement": "true",
+    #       "installed_version": "4.8"
+    #     },
+    #     "name": {
+    #       "meet_requirement": "false",
+    #       "installed_version": "none"
+    #     }            
+    #   }
+    # }
+
+    # Usage:
+    # f_dependency_version_json "framework";
+    # f_dependency_version_json "project";
+
+    # ---------------------------------------------------------------
+    # [1] Declare variables with local scope to this function only.
+
+    local source;
+    local length;
+    local lastIndex;
+    local count;
+
+    # ---------------------------------------------------------------
+    # [2] Get the associative array storing the wanted dependencies.
+
+    source="${1}";
+
+    if [[ ${source} == "framework" ]];then
+        vf_metadata_string+='"framework_dependencies":{';
+        f_dependency_array_copy A_dependency_checked checked;
+        f_dependency_array_copy A_dependency_installed installed;
+    elif [[ ${source} == "project_make" ]];then
+        vf_metadata_string+='"project_dependencies":{"make":{';
+        f_dependency_array_copy A_dependency_checked_project_make pmchecked;
+        f_dependency_array_copy A_dependency_installed_project_make pminstalled;
+    elif [[ ${source} == "project_execute" ]];then
+        vf_metadata_string+='"execute":{';
+        f_dependency_array_copy A_dependency_checked_project_execute pechecked;
+        f_dependency_array_copy A_dependency_installed_project_execute peinstalled;
+    fi;
+
+    # ---------------------------------------------------------------
+    # [3] Construct the string.
+
+    length=${#installed[@]};
+    lastIndex=$(( ${length} - 1 ));
+    count=0;
+
+    if [[ ${source} == "framework" ]];then
+
+        length=${#installed[@]};
+        lastIndex=$(( ${length} - 1 ));
+        count=0;
+
+        for i in "${!installed[@]}"
+        do
+            vf_metadata_string+="\"$i\":{ \"meet_requirement\": \"${checked[$i]}\", \"installed_version\": \"${installed[$i]}\" }";
+
+            if [[ $count != $lastIndex ]];then
+                vf_metadata_string+=',';
+            fi;
+            count=$((count + "1"));
+        done;
+        vf_metadata_string+='}';
+
+    elif [[ ${source} == "project_make" ]];then
+        
+        length=${#pminstalled[@]};
+        lastIndex=$(( ${length} - 1 ));
+        count=0;
+        
+        for i in "${!pminstalled[@]}"
+        do
+            vf_metadata_string+="\"$i\":{ \"meet_requirement\": \"${pmchecked[$i]}\", \"installed_version\": \"${pminstalled[$i]}\" }";
+
+            if [[ $count != $lastIndex ]];then
+                vf_metadata_string+=',';
+            fi;
+            count=$((count + "1"));
+        done;
+        vf_metadata_string+='}';
+
+    elif [[ ${source} == "project_execute" ]];then
+        
+        length=${#peinstalled[@]};
+        lastIndex=$(( ${length} - 1 ));
+        count=0;
+        
+        for i in "${!peinstalled[@]}"
+        do
+            vf_metadata_string+="\"$i\":{ \"meet_requirement\": \"${pechecked[$i]}\", \"installed_version\": \"${peinstalled[$i]}\" }";
+
+            if [[ $count != $lastIndex ]];then
+                vf_metadata_string+=',';
+            fi;
+            count=$((count + "1"));
+        done;
+        vf_metadata_string+='}';
+        vf_metadata_string+='}';
+    fi;
+};

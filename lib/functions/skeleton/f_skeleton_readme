@@ -1,0 +1,123 @@
+function f_skeleton_readme(){
+cat 2>/dev/null << EOF > ${vf_path_framework_home}projects/${project_name}/README.md
+# Project: network-connectivity-checker
+
+***    
+
+<a name="MENU"></a>
+# Quick links:
+   
+1. [About](#AB)        
+1. [Local 'install'](#LI)            
+1. [Project setup](#PS)  
+1. [Project json](#PJ)                      
+1. [CI/CD setup](#CICD)               
+1. [Project --HELP screen](#PH)     
+
+***
+
+<a name="AB"></a>
+[menu](#MENU)          
+## About.     
+
+- This project runs using the 'bash-x' framework.   
+- It does this....       
+- etc        
+
+***
+
+<a name="LI"></a>
+[menu](#MENU)           
+## Local 'install'.      
+
+- Pull the bash-x framework repository and this project is contained within it.    
+
+```
+$ git clone https://git.swisscom.com/scm/MMO/bash-x.git
+```       
+
+- For framework setup and background information refer to the [bash-x README.](https://git.swisscom.com/scm/MMO/bash-x/README.md)     
+    - This explains how to setup the framework on the local machine.    
+    - Provides background to the framework structure and how its projects work.    
+- For framework and project help screens use these commands.    
+
+```
+$ bash-x --HELP    
+$ bash-x --PROJECT project-name --HELP
+```      
+
+***
+
+<a name="PS"></a>    
+[menu](#MENU)         
+## Project setup.        
+
+Project setup involves these json files.    
+
+1. **inventory.json**.       
+     - This file contains the ips of all the servers that are connected to.    
+1. **help.json**.     
+     - The values here determine the default settings for the project flags.    
+     - You can see all the project flags in the screenshot in the below [--HELP section](#PH).    
+     - Select the **authapproach** and define the **ssh** flags.     
+     - Alternatively pass these parameters as runtime flags.             
+1. **project_file1.json**.    
+     - This project file is used for..   
+
+***    
+
+<a name="PJ"></a>
+[menu](#MENU)          
+## Project json.  
+
+- All bash-x framework projects require four json files.    
+- These are found in the subfolder **projects/project_name/json/project/**    
+- Only the **help.json** should be modified by a user of the project in order to set defaults for project flags.    
+- The other three json files are specified by the project developer and should not be changed.    
+
+1. **project.json**          
+    - The definition of the project stages.    
+1. **arrays.json**          
+    - The declaration of all arrays used in the project.    
+1. **errors.json**          
+    - The declaration of all error codes used in each stage of the project.    
+1. **help.json**            
+    - The file used to generate the help screen for the project and where the flag defaults are set.     
+
+***
+
+<a name="CICD"></a>        
+[menu](#MENU)         
+## CI/CD pipelines.       
+
+This project can be run locally or from a CI/CD pipeline (e.g. Jenkins, Gitlab etc).
+
+- The project includes Jenkins files for running in Prod, Stag and Ref environments.    
+- When run the pipeline pulls a container and also the **bash-x** repository.       
+- The pipeline UI allows runtime selections to be made.         
+- After the pipeline is run, it takes a couple of minutes for the results to appear in prometheus / Grafana.       
+
+***
+
+<a name="TJ"></a>    
+[menu](#MENU)         
+## Heading two.  
+
+### Sub heading three.
+
+- etc    
+- etc     
+      
+### Definition of a test.
+
+- etc   
+- etc    
+
+***
+<a name="PH"></a>     
+[menu](#MENU)         
+## Project --HELP screen.    
+
+![bash-x](README_IMAGES/readme_image1.png){height=1836 width=1398}
+EOF
+};

@@ -1,0 +1,25 @@
+function f_errors_codes(){
+
+# About:
+# - This function is the home for all error codes for the framework.
+# - The project error codes are defined in 'json/project/errors.json'
+# - All framework errors are show-stoppers and result in an exit code of '1'.
+
+# Usage:
+# f_errors_exitmessages_framework "${FUNCNAME[0]}: $((LINENO))" "x";
+# - The x parameter is whatever matches a key in the below array.
+
+# Search the code with this string to match on all framewrok error handling.
+# f_errors_exitmessages_framework "${FUNCNAME[0]}: $((LINENO))" "x";
+
+# ---------------------------------------------------------------
+# [1] Store messages and hints for each framework error code.
+# - Up to the ',' is the 'message' - this must be a string.
+# - After the pipe is the 'hint' - this can be a string or a variable.
+# - 'vf_dynamic_error_msg' is a global variable that can be assigned and used when assigning error hints dynamically.
+
+A_framework_stage_errcodes["bashx"]="Critical framework error,${vf_dynamic_error_msg}";
+A_framework_stage_errcodes["framework_flags"]="Badly passed flags,${vf_dynamic_error_msg}";
+A_framework_stage_errcodes["project_json"]="Missing project json file!,${vf_dynamic_error_msg}";
+A_framework_stage_errcodes["authentication"]="Authentication error!,${vf_dynamic_error_msg}";
+};

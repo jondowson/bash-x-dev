@@ -1,0 +1,226 @@
+function f_json_recurse(){
+
+# About:
+# - This function can be copied as is into any project with alterations only required at the array handling at step [6] altered.
+#   - this enables projects to read and assign to arrays project specific json files. 
+# - This function uses the 'jq' json parsing library to read any well formed json.
+# - It uses recursion to navigate the json strucure.
+# - It reads the key value pairs into different arrays based on the json file from where they are read.
+# - The arrays are then used by other functions to declare all json key-value pairs as bash variables. 
+# - It also optionally adds a prefix to each array element. e.g. 'vj_'. 
+#   - this denotes that the subsequent generated bash variable was defined in a json file.
+
+# Usage:
+# f_json_recurse "$(cat /path/to/file.json)" "vj_";
+# - The second parameter is optional but appending 'vj_' is good practice.
+
+# ---------------------------------------------------------------
+# [1] Declare local function scope variables.
+
+local json_content;             
+local key_prefix;               
+local input_params_count;       
+local key_lineage;               
+local json_pair_keyvalue;       
+local json_pair_key;            
+local key_current;              
+local value_type;               
+
+# The output from a cat command on the json file.
+# Optional prefix such as 'vj_' to denote originating from a json file.
+# Count of input parameters to this function.
+# The contents of the file as read by the jq parsing library.
+# This grows as each json object passes through recursion.
+# The current json key value pair in the recursive loop.
+# The current key in the recursive loop.
+# The value for the current key in the recursive loop ().
+# The current key in the recursive loop (but potentially re-assigned).
+# The current value type in the recursive loop.
+
+# ---------------------------------------------------------------
+# [2] Assign the passed parameters.
+
+json_content="${1}";               
+key_prefix="${2}";    
+input_params_count="${#}";
+
+# ---------------------------------------------------------------
+# [3] Read the json file using jq.
+
+json_content_map=$(${jq} -r "to_entries|map(\"\(.key)=\(.value|tostring)\")|.[]" <<< "${json_content}");
+
+# ---------------------------------------------------------------
+# [4] Check if function is being called recursively (will pass three parameters).
+
+if [[ "${input_params_count}" -lt 3 ]]; then
+  # assign empty starting point for key_lineage.
+  key_lineage="";
+else
+# assign existing lineage from previous recursion loop.   
+  key_lineage="${2}";
+fi;
+
+# ---------------------------------------------------------------
+# [5] Traverse the json using the current key_lineage.
+
+while read -r json_pair_keyvalue; do
+  
+  # Check if any more elements in json to traverse or exit recursive loop.
+  if [ -z "${json_pair_keyvalue}" ]; then
+      break;
+  fi;
+
+  # Reset the key_current. This is what will be appended to the key_lineage.
+  key_current="";
+
+  # Read the next key value pair from json into two variables.
+  IFS== read json_pair_key json_pair_value <<< "${json_pair_keyvalue}";
+  
+  # If starting with empty key_lineage, then add the optional prefix.
+  if [ -z "${key_lineage}" ]; then
+      if [[ "${key_prefix}" == "" ]]; then
+        key_current="${json_pair_key}";
+      else
+        key_current="${key_prefix}_${json_pair_key}";
+      fi;
+  # If loop is called recursively then append the current key to the lineage.
+  # e.g. key becomes: 'vj_project' --> 'vj_project_description'
+  else
+      key_current="${key_lineage}"_"${json_pair_key}";
+  fi;
+
+  # Determine if value is an int or float as these are not picked up by following ${jq} command.
+  value_type="";
+  if [[ "${json_pair_value}" =~ ^[+-]?[0-9]+$ ]]; then
+    value_type="integer";
+  
+  elif [[ "${json_pair_value}" =~ ^[+-]?[0-9]+\.$ ]]; then
+    value_type="string";
+  
+  elif [[ "${json_pair_value}" =~ ^[+-]?[0-9]+\.?[0-9]*$ ]]; then
+    value_type="float";
+  
+  elif [[ "${json_pair_value}" =~ ^(true|false|True|False|TRUE|FALSE)$ ]]; then
+    value_type="bool"; 
+
+  else
+    value_type="string";  
+  fi;
+
+  # This is also the case for an integer value.
+  if [[ "${value_type}" == "string" ]] && [[ "${json_pair_value}" == "" ]]; then
+    value_type="integer";
+  fi;
+
+  # If value is not a string, int or float, then it must contain nested objects and so recurse.
+  if ${jq} -e . >/dev/null 2>&1 <<< "${json_pair_value}"  && [[ "${value_type}" != "float" ]] \
+                                                          && [[ "${value_type}" != "integer" ]] \
+                                                          && [[ "${value_type}" != "bool" ]]; then
+    # The dummy parameter means the function is called with three inputs and this branches to recursive mode.
+    f_json_recurse "${json_pair_value}" "${key_current}" "dummy";
+
+  # Grab the value.
+  else
+    
+# ---------------------------------------------------------------
+# [6] Select arrays to populate based on the 'key_lineage'. 
+
+    case "${key_lineage}" in
+
+      # - Create a new bash variables of the same name but using 'vp_' in place of 'vj_'. 
+      # - 'vj_'   - the value defined in help.json.
+      #           - e.g. 'vj_help_testcase'
+      #           - will be added to the json_help array and declared as a bash variable.
+      # - 'vp_'   - this is initially a copy of the 'vj_' but its value can be updated subsequently. e.g by a passed flag. 
+      #           - as well this localises the path if the parameter is detected as a project resource.
+
+      # ---------------------------------------------------------------
+      "vj_inventory"*)
+
+        # Declare as bash variable and add to array of all project json variables: 
+        # - 'A_project_json'
+        f_arrays_set_var "${key_current}" "${json_pair_value}";
+        
+        # Remove the prefix 'vj_' and add the prefix 'vp_'.
+        # Declare as bash variable and add to array of all project variables: 
+        # - 'A_project_vars'
+        # - 'A_variables_inventory'
+        key_current=$(f_utils_strings_bpe "del_fromleft_upto_including_first" "${key_current}" "_");
+        f_arrays_set_var "vp_${key_current}" "${json_pair_value}";;
+
+      # ---------------------------------------------------------------
+      "vj_framework"*)
+
+        # Declare as bash variable and add to array of all framework json variables: 
+        # - 'A_framework_json'
+        f_arrays_set_var "${key_current}" "${json_pair_value}";
+        
+        # Remove the prefix 'vj_' and add the prefix 'vf_'.
+        # Declare as bash variable and add to array of all framework variables: 
+        # - 'A_framework_vars'
+        key_current=$(f_utils_strings_bpe "del_fromleft_upto_including_first" "${key_current}" "_");
+        f_arrays_set_var "vf_${key_current}" "${json_pair_value}";;
+
+      # ---------------------------------------------------------------
+      "vj_project"*)
+        
+        # Declare as bash variable and add to array of all project json variables: 
+        # - 'A_project_json'
+        f_arrays_set_var "${key_current}" "${json_pair_value}";
+        
+        # Remove the prefix 'vj_' and add the prefix 'vp_'.
+        # Declare as bash variable and add to array of all project variables: 
+        # - 'A_project_vars'
+        key_current=$(f_utils_strings_bpe "del_fromleft_upto_including_first" "${key_current}" "_");
+        f_arrays_set_var "vp_${key_current}" "${json_pair_value}";;
+
+      # ---------------------------------------------------------------
+      "vj_help"*)
+        
+        A_json_help["${key_current}"]="${json_pair_value}";
+        
+        # For help.json the bash variable is the stem, e.g. 'vj_help_testcase'.
+        # The values are stored in the child elements, '_shortflag', '_about', '_type' and '_default'.
+        # Any flags containing paths are subsequently resolved (~/), fixed (remove extra slashes), or prefixed with root paths. 
+       
+        if [[ "${key_current}" == *"_shortflag" ]] || [[ "${key_current}" == *"_about" ]] || [[ "${key_current}" == *"_type" ]];then
+
+          # Remove the prefix 'vj_'.
+          key_current=$(f_utils_strings_bpe "del_fromleft_upto_including_first" "${key_current}" "_");
+          
+          # Add the prefix 'vp_'.
+          f_arrays_set_var "vp_${key_current}" "${json_pair_value}";
+
+        # This holds the value for the stem which ends with the longflag, e.g. 'vj_help_flags_inventory'
+        elif [[ "${key_current}" == *"_default" ]];then
+            
+            # Remove the last part, i.e. '_default'.
+            key_current=$(echo $key_current | ${vf_cmd_sed} 's|\(.*\)_.*|\1|');
+           
+            # Set the 'vj_' variable.
+            f_arrays_set_var "${key_current}" "${json_pair_value}";
+            
+            # Remove the prefix 'vj_'.
+            key_current=$(f_utils_strings_bpe "del_fromleft_upto_including_first" "${key_current}" "_");
+            
+            # Add the prefix 'vp_'.
+            f_arrays_set_var "vp_${key_current}" "${json_pair_value}";
+        fi;;
+
+      # ---------------------------------------------------------------
+      "vj_errors"*)
+        A_json_errors["${key_current}"]="${json_pair_value}";;  
+
+      # ---------------------------------------------------------------
+      "arrays"*)
+        A_json_arrays["${key_current}"]="${json_pair_value}";;
+
+      # ---------------------------------------------------------------
+      *)
+        # All other matches go to the project code.
+        fp_project_custom_json "${key_current}" "${json_pair_value}";;
+
+    esac;
+  fi;
+done <<< "${json_content_map}";
+};

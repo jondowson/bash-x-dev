@@ -1,0 +1,88 @@
+function f_arrays_declare_vars(){
+
+# About:   
+# - This function declares as bash variables the k value pairs held in the arrays.
+# - Prior to bash 4.3 - the only way to do this is declaring a block for each array.
+# - This function works on bash 4.0 and above but requires the array to be added to the case statement below.
+# - After bash 4.3 it is possible to dynamically name the array as follows:
+#   - Pass in the array name as a parameter.
+#   local -n array=$1;
+#   for k in ${!array[@]};
+#   do
+#     value=${array[${k}]};
+#     printf -v "${k}" "${value}";
+#   done
+
+# Usage:
+# f_arrays_declare_vars "json_framework";
+# - Pass as parameter the name of the array to declare - this is matched to the case statement below.
+
+# ---------------------------------------------------------------
+# [1] Declare variables with local scope to this function only.
+
+local array_to_declare;
+local key;
+local value;
+
+# ---------------------------------------------------------------
+# [2] Assign passed parameter(s).
+
+array_to_declare="${1}";
+
+# ---------------------------------------------------------------
+# [3] Match the array to declare from the case statement. 
+
+case "${array_to_declare}" in
+
+# ---------------------------------------------------------------
+  "variables_all")
+    for k in "${!A_variables_all[@]}"
+    do
+      key=$(f_utils_strings "bashvar_swap" "${k}");
+      value=${A_variables_all[${k}]};
+      # Declare the variable and its value - now available globally.
+      printf -v "${key}" "${value}";
+    done;;
+
+# ---------------------------------------------------------------
+  "variables_all_empty")
+    for k in "${!A_variables_all_empty[@]}"
+    do
+      key=$(f_utils_strings "bashvar_swap" "${k}");
+      value=${A_variables_all_empty[${k}]};
+      # Declare the variable and its value - now available globally.
+      printf -v "${key}" "${value}";
+    done;;
+
+# ---------------------------------------------------------------
+  "json_help")
+    for k in "${!A_json_help[@]}"
+    do
+      key=$(f_utils_strings "bashvar_swap" "${k}");
+      value=${A_json_help[${k}]};
+      # Declare the variable and its value - now available globally.
+      printf -v "${key}" "${value}";
+    done;;
+
+# ---------------------------------------------------------------
+  "json_errors")
+    for k in "${!A_json_errors[@]}"
+    do
+      key=$(f_utils_strings "bashvar_swap" "${k}");
+      value=${A_json_errors[${k}]};
+      # Declare the variable and its value - now available globally.
+      printf -v "${key}" "${value}";
+    done;;
+
+# ---------------------------------------------------------------
+  "json_stages")
+    for k in "${!A_json_stages[@]}"
+    do
+      key=$(f_utils_strings "bashvar_swap" "${k}");
+      value=${A_json_stages[${k}]};
+      # Declare the variable and its value - now available globally.
+      printf -v "${key}" "${value}";
+    done;;
+
+esac;
+};

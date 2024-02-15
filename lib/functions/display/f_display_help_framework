@@ -1,0 +1,74 @@
+function f_display_help_framework(){
+
+# About:     
+# - Display help for framework.
+# - This is 'hard-coded' rather than converting the help.json, as with the project help screen.
+
+# Usage:
+# f_display_help_framework;
+
+# ---------------------------------------------------------------
+# [1] Display framework help.
+
+${spacer};
+printf "%b\n" "${cyB}Help page for bash-x.${rs}";
+${spacer};
+${equalsLine};
+printf "\n%b\n" "${cyB}Flags (-short --long)${rs}                  About                                              ${yl}Defaults${rs} (as defined in framework.json)";
+${equalsLine};  
+printf "%b\n" "Note: to namespace from project flags, all framework flags are CAPITALISED.";
+${spacer};
+printf "%s\t\t%s\n"   "${cy}-AA          --AUTHAPPROACH    ${cy}        How to connect to remote servers                   ${yl}${vj_framework_flags_ssh_approach}${rs}"            ${cy}"Either 'user_pass','user_key','user_pass_key' or 'cicd_user_pass'";
+printf "%s\t\t\t%s\n" "${rs}-CD          --COLORDISPLAY    ${rs}        Display output using colors                        ${yl}${vj_framework_flags_display_color}${rs}"           ${rs}"Either 'true' or 'false'.";
+printf "%s\t\t\t%s\n" "${cy}-H           --HELP            ${cy}        This menu + list of locally available projects     ${yl}n/a${rs}"                                           ${cy}"Just pass the flag to set to true. No argument required.".;
+printf "%s\t\t\t%s\n" "${rs}-I           --INSPECT         ${rs}        Get metadata about machine + verify dependencies   ${yl}${vj_framework_flags_tools_inspect}${rs}"           ${rs}"Either 'json' or 'text'.";
+printf "%s\t\t\t%s\n" "${cy}-FF          --FASTFAIL        ${cy}        Exit project on first failure                      ${yl}${vj_framework_flags_behaviour_fastfail}${rs}"      ${cy}"Just pass the flag to set to true. No argument required.";
+printf "%s\t\t\t%s\n" "${rs}-L           --LIMIT           ${rs}        Run project on a subset of servers                 ${yl}${vj_framework_flags_behaviour_limit}${rs}"         ${rs}"Regex matches exactly on hostname or on pattern. See example below.";
+printf "%s\t\t\t%s\n" "${cy}-MF          --MINFRAMEWORK    ${cy}        Minimise framework code into single file           ${yl}n/a${rs}"                                           ${cy}"Just pass the flag to set to true. No argument required.";
+printf "%s\t\t\t%s\n" "${rs}-MP          --MINPROJECT      ${rs}        Minimise project code into single file             ${yl}n/a${rs}"                                           ${rs}"Just pass the flag to set to true. Requires a specified project to preceed it.";
+printf "%s\t%s\n"     "${cy}-P           --PROJECT         ${cy}        The name of the project to run                     ${yl}\"project-name\"${rs}"                              ${cy}"Locally 'installed' projects are listed below.";
+printf "%s\t\t\t%s\n" "${rs}-DC          --REMOTECOMPUTE   ${rs}        Distribute project compute to remote servers       ${yl}${vj_framework_flags_behaviour_remotecompute}${rs}" ${rs}"Special flag for projects to implement, not meant for end-users.";
+printf "%s\t\t\t%s\n" "${cy}-S           --SETUP           ${cy}        Prepare local machine to run bash-x                ${yl}n/a${rs}"                                           ${cy}"Just pass the flag to set to true. No argument required.";
+printf "%s\t\t\t%s\n" "${rs}-SK          --SKELETON        ${rs}        For development, create a template project.        ${yl}${vj_framework_flags_tools_skeleton}${rs}"          ${rs}"Creates a named project folder with templated files. No argument required.";
+printf "%s\t\t%s\n"   "${cy}-SS          --SKIPSTAGES      ${cy}        Do no run the stage(s). Take care when using!      ${yl}\"1,2,3\"${rs}"                                     ${cy}"The effect is project dependent, see example usage below.";
+printf "%s\t\t%s\n"   "${rs}-SSHI        --SSHINTERFACE    ${rs}        Which server interface to connect to               ${yl}${vj_framework_flags_ssh_interface}${rs}"           ${rs}"The interface is specified in the inventory.json";
+printf "%s\t\t%s\n"   "${cy}-SSHKP       --SSHKEYPATH      ${cy}        The local path to the ssh key for connections      ${yl}${vj_framework_flags_ssh_keypath}${rs}"             ${cy}"A path that may start with '~/' (resolved to \${HOME})";
+printf "%s\t\t%s\n"   "${rs}-SSHTP       --SSHTARGETPATH   ${rs}        The remote path to where ssh connects              ${yl}${vj_framework_flags_ssh_targetpath}${rs}"          ${rs}"A path that may start with '~/' (resolved to \${HOME})";
+printf "%s\t\t%s\n"   "${cy}-SSHU        --SSHUSER         ${cy}        The remote user account for ssh connections        ${yl}${vj_framework_flags_ssh_user}${rs}"                ${cy}"A valid remote account that can be logged into.";
+printf "%s\t\t\t%s\n" "${rs}-TU          --TIDYUP          ${rs}        Remove bash-x framework from remote servers        ${yl}${vj_framework_flags_behaviour_tidyup}${rs}"        ${rs}"Valid SSH credentials and SSHTARGETPATH for bash-x framework.";
+printf "%s\t\t\t%s\n" "${cy}-TR          --TRACE           ${cy}        Add detailed tracing to sub process logs           ${yl}${vj_framework_flags_behaviour_trace}${rs}"         ${cy}"Just pass the flag to set to true. No argument required.";
+
+printf "\n%b\n" "${cyB}Example usage:${rs}";
+${equalsLine}; 
+printf "%b\n" "Note: if used, the '--PROJECT' flag must be passed first.";
+${spacer};
+printf "%b\n" "${yl}$ bash-x ${rs}                                         // No flag defaults to the --HELP flag.";
+printf "%b\n" "${yl}$ bash-x --PROJECT name-of-project -H ${rs}            // Show the help menu for a named project.";
+printf "%b\n" "${yl}$ bash-x -P name-of-project -CD false ${rs}            // Run a project with display colors turned off.";
+printf "%b\n" "${yl}$ bash-x --INSPECT text ${rs}                          // Inspect local machine with output as text (not json).";
+printf "%b\n" "${yl}$ bash-x --SETUP ${rs}                                 // Check machine is ready to run framework.";
+printf "%b\n" "${yl}$ bash-x --FASTFAIL ${rs}                              // Exit project on first failure.";
+printf "%b\n" "${yl}$ bash-x --SKELETON ${rs}                              // Create a templated project skeleton.";
+printf "%b\n" "${yl}$ bash-x -P name-of-project -L \"stag11,stag12\" ${rs}   // Comma separate the servers where the application should run.";
+printf "%b\n" "${yl}$ bash-x -P name-of-project -L \"stag1,stag21\" ${rs}    // Pattern match example: cluster1 servers and stag21 in cluster2.";
+printf "%b\n" "${yl}$ bash-x -P name-of-project -SS \"1,2,3\" ${rs}          // Comma separate the stages that will not be run. Take care to include dependent stages!";
+${equalsLine};
+printf "\n%b\n" "${cyB}Local projects in:${rs} ${yl}${vf_path_projects} ${rs}";
+${equalsLine};
+output=$(ls ${vf_path_projects} 2>/dev/null) && availableProjects=$(echo "$output" | grep -v "README*");
+if [[ "${?}" == "1" ]];then
+
+    printf "%b\n" "${yl}--> ${rs}The path to the 'bash-x-projects' folder cannot be found.";
+    printf "%b\n" "${yl}--> ${rs}Please check the 'projectspath' flag in the framework.json";
+
+elif [[ "${availableProjects}" == "" ]];then
+    printf "%b\n" "${yl}--> ${rs}The specified 'bash-x-projects' folder is empty.";
+    printf "%b\n" "${yl}--> ${rs}Go get some projects!";
+
+else
+    printf "%s\n" "${availableProjects}";
+fi;
+${spacer};
+printf "%b\n" "${ylB}See framework README.md for more information.${rs}";
+${spacer};
+};

@@ -1,0 +1,38 @@
+function f_dependency_version_text(){
+
+    # About:
+    # - Print framework dependencies to screen.
+
+    # Usage:
+    # f_dependency_version_text "framework";
+    # f_dependency_version_text "project";
+
+    # ---------------------------------------------------------------
+    # [1] Declare variables with local scope to this function only.
+
+    local source;
+
+    # ---------------------------------------------------------------
+    # [2] Get the associative array storing the wanted dependencies.
+
+    source="${1}";
+
+    if [[ ${source} == "framework" ]];then
+        vf_metadata_string+='"framework_dependency":{';
+        f_dependency_array_copy A_dependency_checked A_checked;
+        f_dependency_array_copy A_dependency_installed A_installed;
+    elif [[ ${source} == "project" ]];then
+        vf_metadata_string+='"project_dependency":{';
+        f_dependency_array_copy A_dependency_checked_project A_checked;
+        f_dependency_array_copy A_dependency_installed_project A_installed;
+    fi;
+
+    # ---------------------------------------------------------------
+    # [3] Print to screen.
+
+    for i in "${!A_checked[@]}";do
+        printf "%b\n" "dependency: $i";
+        printf "%b\n" "meet_requirement: ${A_checked[$i]}";
+        printf "%b\n" "installed_version: ${A_installed[$i]}";
+    done;
+};

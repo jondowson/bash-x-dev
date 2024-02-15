@@ -1,0 +1,113 @@
+function f_stages_loop(){ 
+
+# About:
+# - This function loops through the stage functions in the defined order in project.json. 
+
+# Usage:
+# f_stages_loop;
+# - No passed params. 
+# - Call this function from the project's 'fp_project_start' function.
+
+# ---------------------------------------------------------------
+# [1] Declare local variables with scope for this function only.
+
+local s;
+local skip;
+local stage;
+local stage_title;
+local stage_concurrent;
+local stage_concurrentMsg;
+
+# ---------------------------------------------------------------
+# [2] Loop through each stage and apply any alterations.
+
+for s in $(seq 1 ${vp_stage_count})
+do
+    stage="vp_project_stages_s${s}";
+    stage_title="${stage}_title";
+
+    # Check this stage exists or break out of loop.
+    if [[ "${stage_title}" == "" ]];then break; fi;
+
+    # Set this globally as it is used by 'fp_project_custom_runorder'.
+    f_arrays_set_var "vp_stage_number" "${s}";
+    
+    # Function that may apply stage alterations (project dependent).
+    fp_project_custom_runorder;
+
+done;
+
+# ---------------------------------------------------------------
+# [3] Display a table of all stages that will be run.
+
+f_stages_display_schedule;
+
+# ---------------------------------------------------------------
+# [4] Loop through each stage as defined in project.json and run its tasks / functions.
+
+for s in $(seq 1 ${vp_stage_count})
+do
+    
+    # Create dynamic strings.
+    stage="vp_project_stages_s${s}";
+    stage_title="${stage}_title";
+    stage_concurrent="${stage}_concurrent";
+    stage_concurrentMsg="${stage}_concurrentMsg";
+
+    # Grab values from stage array and make vars global.
+    f_arrays_set_var "vp_stage_number"               "${s}";
+    f_arrays_set_var "vp_stage_title_value"          "${A_project_vars[${stage_title}]}";
+    f_arrays_set_var "vp_stage_concurrent_value"     "${A_project_vars[${stage_concurrent}]}";
+    f_arrays_set_var "vp_stage_concurrentMsg_value"  "${A_project_vars[${stage_concurrentMsg}]}";
+
+    # Check if remote stage with this high a number exists or exit this inner loop.
+    if [[ "${vp_stage_title_value}" == "" ]];then break; fi;
+
+    # Display stage header to screen.
+    ${spacer}; 
+    ${plusLine};
+    printf "%b\n" "${cyB}Stage ${vp_stage_number}/${vp_stage_count}: ${vp_stage_title_value}${rs}";
+    ${plusLine}; 
+    ${spacer};
+    sleep 2;
+
+    # Apply --SKIPSTAGES or if other skip flag has been passed to 'fp_stages_alterations'.
+    skip="false";
+    if [[ "${vf_framework_flags_behaviour_skipstages}" != "false" ]] || [[ "${#a_skipstages[@]}" -gt "0" ]];then
+
+        # Check if this stage has been added to the skip stages array.
+        for k in ${a_skipstages[@]}
+        do
+            if [[ "${s}" == "${k}" ]];then
+                skip="true";
+            fi;
+        done;
+    fi;
+
+    # Display alternative skip stage message.
+    if [[ "${skip}" == "true" ]];then 
+        printf "%b\n" "${yl}--> Info - ${rs}This stage is being skipped.";
+        sleep 1;
+
+        # Jump to next remote stage in this inner loop iteration.
+        continue;
+    else
+        # Set this for the stage to zero. If an error occurs it will be updated.
+        f_arrays_set_var "vf_status_exitcode" "0"; 
+        
+        # Run stage either as a single process or concurrently with pids.
+        if [[ "${vp_stage_concurrent_value}" == "false" ]];then     
+            f_stages_functions; 
+        else
+            # Fill the multipid array with the function run order for this stage. 
+            f_multipids_arrays;
+
+            # Loop through each multipid function.
+            for function in ${a_multipds_runorder[@]}
+            do
+                $function;
+            done;
+        fi;
+    fi;
+done;
+};

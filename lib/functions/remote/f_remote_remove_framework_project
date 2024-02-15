@@ -1,0 +1,5 @@
+f_remote_remove_framework_project(){
+# Wrapper function to run multiple commands as one subprocess.
+f_remote_remove_framework;
+f_remote_remove_project;
+};

@@ -1,0 +1,178 @@
+function f_skeleton(){
+
+# About:
+# 1. Generate all the required project folders like for ex:
+# - mkdir -p projects/<project_name>/input_output
+# - mkdir -p projects/<project_name>/json/project
+# - mkdir -p projects/<project_name>/lib/functions/fp_multipids
+# - mkdir -p projects/<project_name>/lib/functions/fp_S0
+# - mkdir -p projects/<project_name>/lib/functions/fp_S1
+# - mkdir -p projects/<project_name>/lib/functions/fp_stages/fp_stages_alterations
+# - mkdir -p projects/<project_name>/lib/functions/fp_stages/fp_stages_remote
+
+# 2. Generate the example json and function files.
+
+# Usage:
+# bash-x --SKELETON
+# - No passed parameters.
+
+# ---------------------------------------------------------------
+# [1] Declare local variables with scope for this function only.
+
+local project_name;
+local arrays;
+local errors;
+local help;
+local project;
+
+declare -A display_array;
+
+display_array["input_output"]="";
+display_array["json/project"]="";
+display_array["lib"]="";
+display_array["pipelines/jenkins"]="";
+display_array["pipelines/gitlab"]="";
+display_array["lib/functions/fp_multipids"]="";
+display_array["lib/functions/fp_S0"]="";
+display_array["lib/functions/fp_S1"]="";
+display_array["lib/functions/fp_S2"]="";
+
+# ---------------------------------------------------------------
+# [2] The user should provide the project_name of the project and possibly answer some other questions.
+
+# Ask for the name of the project
+project_name="";
+
+${spacer};
+${dashLine};
+printf "%b\n" "${cy}--> Step1 - ${rs}Name the project:";
+${spacer};
+
+echo "What is the name of your new project? (default: skeleton)";
+read project_name;
+if [[ "${project_name}" == "" ]];then
+    project_name="skeleton";
+fi;
+
+# Check if a project with this name already exists and if this is the case exit.
+if [ -d "${vf_path_framework_home}projects/${project_name}" ]; then
+    printf "%b\n" "Exiting as the project with the name ${project_name} already exists in ${vf_path_framework_home}projects!";
+    printf "%b\n" "${yl}--> info - ${rs} Exiting as a project named ${project_name} already exists in ${vf_path_framework_home}projects/";
+fi;
+
+# ---------------------------------------------------------------
+# [3] Create the project folders.
+${spacer};
+${dashLine};
+printf "%b\n" "${cy}--> Step2 - ${rs}Create the project folder structure:";
+${spacer};
+
+for key in ${!display_array[@]}
+do
+    printf "%b\n" "${yl}--> info - ${rs}${vf_path_framework_home}projects/${project_name}/${key}";
+    mkdir -p ${vf_path_framework_home}projects/${project_name}/${key};
+done;
+
+# ---------------------------------------------------------------
+# [4] Write the template json files.
+
+${spacer};
+${dashLine};
+printf "%b\n" "${cy}--> Step3 - ${rs}Write the templated project json files:";
+${spacer};
+
+f_skeleton_json;
+
+template_path="${vf_path_framework_home}projects/${project_name}/json/project/";
+for j in ${!A_json_project_template[@]}
+do
+  printf "%b\n" "${yl}--> info - ${rs}${template_path}${j}";
+  printf "%s\n" "${A_json_project_template[${j}]}" | ${jq} --indent 4 . > "${template_path}${j}";  
+done;
+
+# ---------------------------------------------------------------
+# [8] Write the template function files.
+
+${spacer};
+${dashLine};
+printf "%b\n" "${cy}--> Step4 - ${rs}Write the templated function files:";
+${spacer};
+
+printf "%b\n" "${yl}--> info - ${rs}${vf_path_framework_home}projects/${project_name}/lib/fp_project_start";
+f_skeleton_start;
+
+printf "%b\n" "${yl}--> info - ${rs}${vf_path_framework_home}projects/${project_name}/lib/fp_project_start_remote";
+f_skeleton_start_remote;
+
+printf "%b\n" "${yl}--> info - ${rs}${vf_path_framework_home}projects/${project_name}/lib/fp_project_custom_json";
+f_skeleton_project_jsonarrays;
+
+printf "%b\n" "${yl}--> info - ${rs}${vf_path_framework_home}projects/${project_name}/lib/fp_project_custom_runorder";
+f_skeleton_stage_alterations;
+
+printf "%b\n" "${yl}--> info - ${rs}${vf_path_framework_home}projects/${project_name}/lib/functions/fp_S0/fp_S0_ui_banner";
+f_skeleton_S0_ui_banner;
+
+printf "%b\n" "${yl}--> info - ${rs}${vf_path_framework_home}projects/${project_name}/lib/functions/fp_S0/fp_S0_set_vars";
+f_skeleton_S0_set_vars;
+
+printf "%b\n" "${yl}--> info - ${rs}${vf_path_framework_home}projects/${project_name}/lib/functions/fp_S0/fp_S0_logs_create";
+f_skeleton_S0_logs_create;
+
+# ---------------------------------------------------------------
+# [9] Write the template multipid function files.
+
+${spacer};
+${dashLine};
+printf "%b\n" "${cy}--> Step5 - ${rs}Write the templated function files for parallel processing:";
+${spacer};
+
+printf "%b\n" "${yl}--> info - ${rs}${vf_path_framework_home}projects/${project_name}/lib/functions/fp_multipids/fp_multipids_create";
+f_skeleton_multipids_create;
+
+printf "%b\n" "${yl}--> info - ${rs}${vf_path_framework_home}projects/${project_name}/lib/functions/fp_multipids/fp_multipids_display_details";
+f_skeleton_multipids_display_details;
+
+printf "%b\n" "${yl}--> info - ${rs}${vf_path_framework_home}projects/${project_name}/lib/functions/fp_multipids/fp_multipids_display_details_S1";
+f_skeleton_multipids_display_details_S1;
+
+printf "%b\n" "${yl}--> info - ${rs}${vf_path_framework_home}projects/${project_name}/lib/functions/fp_multipids/fp_multipids_display_fail";
+f_skeleton_multipids_display_fail;
+
+printf "%b\n" "${yl}--> info - ${rs}${vf_path_framework_home}projects/${project_name}/lib/functions/fp_multipids/fp_multipids_display_success";
+f_skeleton_multipids_display_success;
+
+printf "%b\n" "${yl}--> info - ${rs}${vf_path_framework_home}projects/${project_name}/lib/functions/fp_multipids/fp_multipids_wait";
+f_skeleton_multipids_wait;
+
+# ---------------------------------------------------------------
+# [10] Write the template README file.
+
+${spacer};
+${dashLine};
+printf "%b\n" "${cy}--> Step6 - ${rs}Write the templated README.md:";
+${spacer};
+
+printf "%b\n" "${yl}--> info - ${rs}${vf_path_framework_home}projects/${project_name}/README.md";
+f_skeleton_readme;
+
+# ---------------------------------------------------------------
+# [11] Write the template Jenkins file.
+
+${spacer};
+${dashLine};
+printf "%b\n" "${cy}--> Step7 - ${rs}Write the templated Jenkinsfile:";
+${spacer};
+f_skeleton_jenkinsfiles;
+
+# ---------------------------------------------------------------
+# [12] Completion message.
+
+${spacer};
+${dashLine};
+printf "%b\n" "${cy}--> Step8 - ${rs}Skeleton project template summary:";
+${spacer};
+printf "%b\n" "${yl}--> info - ${rs}The project has been created: ${cy}${vf_path_framework_home}projects/${project_name}${rs}";
+printf "%b\n" "${yl}--> info - ${rs}See the framework README for more tips and happy rapid-bashing!${rs}";
+${spacer};
+};

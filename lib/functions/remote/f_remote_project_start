@@ -1,0 +1,10 @@
+function f_remote_project_start(){
+
+# Start the project on the server.
+# Determine if framework is minimised or not.
+if [[ "${vf_bashx_minified}" == "true" ]];then
+    f_ssh_cmd "${SSH_PATH_TARGET}bash-x ${vf_args_passed} --REMOTECOMPUTE";
+else
+    f_ssh_cmd "${SSH_PATH_TARGET}bash-x/lib/bash-x ${vf_args_passed} --REMOTECOMPUTE";
+fi;
+};

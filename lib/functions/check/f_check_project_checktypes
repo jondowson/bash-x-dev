@@ -1,0 +1,127 @@
+function f_check_project_checktypes(){
+
+# About:
+# - Run the checks specified in the errors.json.
+# - Not all error codes have a 'check_type'.
+# - Most that do have a check_type can be checked in Stage 0, the 'setup' stage.
+# - Pass the specific checks to make.
+
+# Usage:
+# f_check_project_checktypes;
+
+# ---------------------------------------------------------------
+# [1] Declare variables with local scope to this function. 
+
+local json_errcode;
+local loop_stage_exitcode;
+local check_type;
+local check_mode;
+local check_this;
+local result;
+local true_count;
+local comma_count;
+local cc;
+local cmd_substring;
+
+# ---------------------------------------------------------------
+# [2] Assign passed parameter. 
+
+check_type=${1};
+# Set loop variable to 1.
+
+# ---------------------------------------------------------------
+# [3] Loop until we check all error codes for the current stage. 
+
+json_errorcode="1";
+while :; 
+do
+    # Create string that matches to element in the errors.json
+    loop_stage_exitcode="vj_errors_s${vp_stage_number}_e${json_errorcode}";
+
+    # If no mandatory checktype message then loop has reached end of stage errors.
+    if [[ "${A_json_errors[${loop_stage_exitcode}_message]}" == "" ]];then 
+      break;
+    fi;
+
+    # If no 'check_type' value then skip to next json block for stage.
+    check_type="${A_json_errors[${loop_stage_exitcode}_check_type]}";
+    if [[ "${A_json_errors[${loop_stage_exitcode}_check_type]}" == "" ]];then 
+      json_errorcode=$((json_errorcode+1));
+      continue;
+    fi;
+
+    # Determine if check is required if running on local or remote machine.
+    if [[ "${vf_framework_flags_behaviour_remotecompute}" == "true" ]]; then 
+      check_mode="${A_json_errors[${loop_stage_exitcode}_check_remote]}";
+    else
+      check_mode="${A_json_errors[${loop_stage_exitcode}_check_local]}";
+    fi;
+
+    # The file path, folder path or command that is being checked.
+    check_this="${A_json_errors[${loop_stage_exitcode}_check_this]}";
+
+    result="true";
+    true_count="0";
+    case "${check_type}" in
+    # ---------------------------------------------------------------
+      command)
+        comma_count=$(f_utils_strings "count_chars" "${check_this}" ",");
+        # If no commas, then the loop will run once.
+        cc=0;
+        until [ "${cc}" -gt $((comma_count)) ]
+        do
+            cmd_substring=$(echo "${check_this}" | cut -d "," -f"$((cc+1))");
+            result=$(command -v ${cmd_substring});
+            if [[ "${result}" != "" ]];then
+              true_count=$((true_count+1));
+            fi;
+            # Advance the comma count.
+            ((cc++));
+        done;
+        if [[ "${true_count}" -eq "0" ]] && [[ "${check_mode}" == "true" ]];then 
+          result=false;
+        fi;
+        ;;
+    # ---------------------------------------------------------------
+      path_file)
+        pathfile="${check_this}";
+        if [[ "${check_this}" == "vj_"* ]] || [[ "${check_this}" == "vf_"* ]]|| [[ "${check_this}" == "vp_"* ]];then 
+          pathfile=${!check_this};
+        fi;
+        if [[ ! -f "${pathfile}" ]] && [[ "${check_mode}" == "true" ]];then 
+          result="false";
+        fi;
+        ;;
+    # ---------------------------------------------------------------
+      path_folder)
+        pathfolder="${check_this}";
+        if [[ "${check_this}" == "vj_"* ]] || [[ "${check_this}" == "vf_"* ]]|| [[ "${check_this}" == "vp_"* ]];then 
+          pathfolder=${!check_this};
+        fi;
+        if [[ ! -d "${pathfolder}" ]] && [[ "${check_mode}" == "true" ]];then  
+          result="false";
+        fi;
+        ;;
+    # ---------------------------------------------------------------
+      var_empty)
+        var_set="${check_this}";
+        if [[ "${check_this}" == "vj_"* ]] || [[ "${check_this}" == "vf_"* ]]|| [[ "${check_this}" == "vp_"* ]];then 
+          var_set=${!check_this};
+        fi;
+        if [[ "${var_set}" == "" ]];then  
+          result="false";
+        fi;
+        ;;
+    esac;
+
+    # Check for test success - if a fail then exit as Stage 0 errors are always show stoppers.
+    if [[ "${result}" == "false" ]];then
+      hint=$(echo ${A_json_errors[${loop_stage_exitcode}_hint]});
+      f_arrays_set_var "vf_framework_flags_behaviour_fastfail" "true";
+      f_errors_exitmessages "${FUNCNAME[0]}: $((LINENO))" "${json_errorcode}";
+    fi;
+
+    # Increment the json_errorcode value for the next iteration.
+    json_errorcode=$((json_errorcode+1));
+done;
+};

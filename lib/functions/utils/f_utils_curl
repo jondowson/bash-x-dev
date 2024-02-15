@@ -1,0 +1,38 @@
+function f_utils_curl(){
+
+# About:
+# - Use curl to post a file to an api endpoint.
+# - The curl command will return a completion code.
+
+# Usage:
+# result=$(f_utils_curl "bob" "password" "/path/to/file.zip" "application/zip" "https://endpoint.url.com");
+# - param [1]: user account.
+# - param [2]: account password.
+# - param [3]: path to file to post.
+# - param [4]: the type of resource (required by curl).
+# - param [5]: the endpoint url.
+
+# ---------------------------------------------------------------
+# [1] Declare variables with local scope to this function. 
+
+local username;
+local password;
+local path_to_file;
+local curl_resource_type;
+local endpoint_url;
+
+# ---------------------------------------------------------------
+# [2] Assign the passed parameters.
+
+username="${1}";
+password="${2}";
+path_to_file="${3}";
+curl_resource_type="${4}";
+endpoint_url="${5}";
+
+# ---------------------------------------------------------------
+# [3] Use curl to post the file to the endpoint.
+
+curl --user "${username}:${password}"   -H "Accept: application/json" \
+                                        -F "file=@${path_to_file};type=${curl_resource_type}" "${endpoint_url}" | ${jq} '.id';
+};

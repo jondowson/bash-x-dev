@@ -1,0 +1,81 @@
+function f_arrays_filter(){
+
+# About:
+# - Function to create a new named array from the array of all variables - 'A_variables_all'.
+
+# Usage:
+# f_filter_array "new_filtered_array_name" "vj_inventory_servers_*_service_default"
+
+# ---------------------------------------------------------------
+# [1] Delare local vars and assign passed parameters.
+
+local array_new="${1}";
+local filter_string="${2}";
+
+# Array to hold the wildcard separated filter strings.
+declare -a filter_array;
+declare -A temp_filter_a;
+
+# Use variable indirection to access the named array.
+declare -n array_ref=${array_new};
+
+# ---------------------------------------------------------------
+# [2] Count the number of wildcard asterixes in the string.
+
+# Increment this count by one to get the count of filter string(s).
+asterix_count=$(f_utils_strings "count_chars" "${filter_string}" "*"); 
+((asterix_count++));
+
+# ---------------------------------------------------------------
+# [3] Create an array of the filter strings.
+
+for ((i=1; i<=asterix_count; i++))
+do
+  string_id="string_${i}";
+  string_id="$(echo ${filter_string} | cut -d '*' -f${i})";
+  filter_array+=( ${string_id} );
+done;
+
+# ---------------------------------------------------------------
+# [4] loop through the filter array and create a new array.
+current_array="A_variables_all";
+first_run_flag="true";
+
+for f in "${filter_array[@]}"
+do
+  if [[ "${current_array}" == "A_variables_all" ]];then
+    current_array="temp_filter_a";
+    for key in "${!A_variables_all[@]}"
+    do
+      case "${key}" in
+        *"${f}"*) 
+          value="${A_variables_all[${key}]}";
+          temp_filter_a["${key}"]="${value}";;
+      esac;
+    done;
+  elif [[ "${current_array}" == "temp_filter_a" ]];then
+    for key in "${!temp_filter_a[@]}" 
+    do
+      case "${key}" in
+        *"${f}"*) 
+          ;;
+        *)
+          unset temp_filter_a["${key}"];;
+      esac;
+    done;
+  fi;
+done;
+
+# ---------------------------------------------------------------
+# [5] Copy the temporary array to the named array.
+
+for key in "${!temp_filter_a[@]}"
+do
+  value=${temp_filter_a["${key}"]};
+  array_ref["${key}"]="${value}";
+done;
+
+# Clear the array used for variable indirection.
+unset -n array_ref;
+unset -n temp_filter_a;
+};

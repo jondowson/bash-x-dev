@@ -1,0 +1,14 @@
+function f_dependency_array_copy(){
+    # About:   
+    # - Here is a small Copy-Function for bash-Variables of any kind
+    #    - Normal scalar variables
+    #    - Indexed arrays
+    #    - Associative arrays
+    # Usage: 
+    # f_dependency_array_copy A_array A_copy;
+    # $1 Name of existing Source-Variable  
+    # $2 Name for the Copy-Target  
+    local var=$(declare -p $1);
+    var=${var/declare /declare -g };
+    eval "${var/$1=/$2=}";
+};

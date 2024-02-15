@@ -1,0 +1,49 @@
+function f_utils_os(){
+
+# About:            
+# - Determine the operating system type.
+
+# Usage:
+# result=$(f_utils_os);
+
+# ---------------------------------------------------------------
+# [1] Declare local variables with scope for this function only.
+
+local os;
+
+# ---------------------------------------------------------------
+# [2] Run uname command and convert string to lowercase.
+
+os=$(uname -a);
+os=$(echo "${os}" | tr '[:upper:]' '[:lower:]');
+
+# ---------------------------------------------------------------
+# [3] Assign os based on string contents.
+
+if [[ "${os}"    == *"darwin"* ]]; then
+  os="Mac";
+elif [[ "${os}" == *"ubuntu"* ]]; then
+  os="Ubuntu";
+else
+  os=$(cat /etc/system-release-cpe);
+  os=$(echo "${os}" | tr '[:upper:]' '[:lower:]');
+  if [[ "${os}" == *"centos"* ]]; then
+    os="Centos";
+  elif [[ "${os}" == *"redhat"* ]]; then
+    os="Redhat";
+  else
+    os=$(cat /etc/*release);
+    os=$(echo "${os}" | tr '[:upper:]' '[:lower:]');
+    if [[ "${os}" == *"debian"* ]] || [[ "${os}" == *"ubuntu"* ]]; then
+      os="Ubuntu";  
+    else
+      os="Unrecognised";
+    fi;
+  fi;
+fi;
+
+# ---------------------------------------------------------------
+# [4] Return result to calling function.
+ 
+printf "%s" "${os}";
+};

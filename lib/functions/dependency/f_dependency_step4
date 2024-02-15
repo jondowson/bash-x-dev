@@ -1,0 +1,189 @@
+f_dependency_step4(){
+
+local version_part_count;
+local source;
+local dependency;
+local json_value;
+local major_json;
+local minor_json;
+local patch_json;
+local major_actual;
+local minor_actual;
+local patch_actual;
+local success;
+
+source="${1}";
+dependency="${2}";
+project_subcategory="${3}";
+json_value="${4}";
+actual_value="${5}";
+major_json="${6}";
+minor_json="${7}";
+patch_json="${8}";
+major_actual="${9}";
+minor_actual="${10}";
+patch_actual="${11}";
+
+# Count how many parts to version.
+if [[ "${patch_json}" == "" ]] && [[ "${minor_json}" == "" ]];then
+    version_part_count="1";
+elif [[ "${patch_json}" == "" ]] && [[ "${minor_json}" != "" ]];then
+    version_part_count="2";
+else
+    version_part_count="3";
+fi;
+
+# Guilty until proven innocent!
+success="false";
+
+# Match on the semantic condition if it exists.
+# E.g. the '>' in '>1.5'
+case ${json_value:0:1} in
+    
+    "^")
+        # ---------------------------------------------------------------
+        # Valid json values: '^1.2.3', '^1.2', '^1'
+        # With these examlpes the major version must be '1'.
+        # Any minor version 1.x where x is greater than or equal to 2.
+        # Any patch version 1.2.x where x is greater than or equal to 3.
+        if [[ "${major_actual}" -eq "${major_json}" ]];then
+            if [[ "${minor_actual}" -ge "${minor_json}" ]] && [[ "${patch_actual}" -ge "${patch_json}" ]] ;then
+                success="true";
+            elif [[ "${minor_actual}" -ge "${minor_json}" ]];then
+                if [[ "${patch_actual}" == "" ]] && [[ "${patch_json}" == "" ]] ;then
+                    success="true";
+                fi;
+            fi;
+        fi;
+        ;;
+    "~")
+        # ---------------------------------------------------------------
+        # Valid json values: '~1.2.3'
+        # Any patch version 1.2.x is acceptable where x is greater than or equal to 3.
+        # But major must be '1' and minor must be '2'.
+        # As such this requires three version parts to have been passed.
+        if [[ "${version_part_count}" != "3" ]];then
+            echo "No way";
+            exit;
+        fi;
+        if [[ "${major_actual}" -ne "${major_json}" ]] || [[ "${minor_actual}" -ne "${minor_json}" ]];then
+            echo "No way";
+            exit;
+        elif [[ "${patch_actual}" -ge "${patch_json}" ]];then
+            success="true";
+        fi;
+        ;;
+    ">")
+        # ---------------------------------------------------------------
+        # Greater or equal.
+
+        if [[ ${json_value:1:1} == "=" ]];then
+            if [[ "${major_actual}" -gt "${major_json}" ]];then
+                success="true";
+            elif [[ "${major_actual}" -eq "${major_json}" ]] && [[ "${minor_actual}" -gt "${minor_json}" ]];then
+                success="true";
+            elif [[ "${major_actual}" -eq "${major_json}" ]] && [[ "${minor_actual}" -eq "${minor_json}" ]] && [[ "${patch_actual}" -ge "${patch_json}" ]];then
+                success="true";
+            fi;
+
+        # ---------------------------------------------------------------
+        # Greater.
+
+        else
+            if [[ "${major_actual}" -gt "${major_json}" ]];then
+                success="true";
+            elif [[ "${major_actual}" -eq "${major_json}" ]] && [[ "${minor_actual}" -gt "${minor_json}" ]];then
+                success="true";
+            elif [[ "${major_actual}" -eq "${major_json}" ]] && [[ "${minor_actual}" -eq "${minor_json}" ]] && [[ "${patch_actual}" -gt "${patch_json}" ]];then
+                success="true";
+            fi;
+        fi;
+        ;;
+
+    "<")
+
+        # ---------------------------------------------------------------
+        # Smaller or equal.
+        if [[ ${json_value:1:1} == "=" ]];then
+            if [[ "${major_actual}" -lt "${major_json}" ]];then
+                success="true";
+            elif [[ "${major_actual}" -eq "${major_json}" ]] && [[ "${minor_actual}" -le "${minor_json}" ]];then
+                success="true";
+            elif [[ "${major_actual}" -eq "${major_json}" ]] && [[ "${minor_actual}" -eq "${minor_json}" ]] && [[ "${patch_actual}" -le "${patch_json}" ]];then
+                success="true";
+            fi;
+
+        # ---------------------------------------------------------------
+        # Smaller.
+        else
+            if [[ "${major_actual}" -lt "${major_json}" ]];then
+                success="true";
+            elif [[ "${major_actual}" -eq "${major_json}" ]] && [[ "${minor_actual}" -lt "${minor_json}" ]];then
+                success="true";
+            elif [[ "${major_actual}" -eq "${major_json}" ]] && [[ "${minor_actual}" -eq "${minor_json}" ]] && [[ "${patch_actual}" -lt "${patch_json}" ]];then
+                success="true";
+            fi;
+        fi;
+        ;;
+
+    # ---------------------------------------------------------------
+    # Any version.
+
+    "*")
+        success="true";
+        ;;
+
+    # ---------------------------------------------------------------
+    # Latest version.
+
+    "l")
+        # Search latest available version of a package
+        latest_version="";
+        which apt > /dev/null 2>&1;
+        if [[ ${?} == 0 ]];then
+            latest_version=$(apt info ${dependency} 2>/dev/null);
+        else
+            latest_version=$(yum info ${dependency} 2>/dev/null);
+        fi;
+        version_latest=$(f_dependency_actual_cleaner "${latest_version}" "basic");
+        #version_latest_number=$(f_dependency_version_numbering "${version_latest}");
+        if [[ "${major_actual}" -gt "${major_json}" ]];then
+            success="true";
+        elif [[ "${major_actual}" -eq "${major_json}" ]] && [[ "${minor_actual}" -gt "${minor_json}" ]];then
+            success="true";
+        elif [[ "${major_actual}" -eq "${major_json}" ]] && [[ "${minor_actual}" -eq "${minor_json}" ]] && [[ "${patch_actual}" -ge "${patch_json}" ]];then
+            success="true";
+        fi;
+        ;;
+
+    ?)
+    # ---------------------------------------------------------------
+    # Simply equal.
+        
+        if [[ "${major_actual}" -eq "${major_json}" ]] && [[ "${minor_actual}" -eq "${minor_json}" ]] && [[ "${patch_actual}" -eq "${patch_json}" ]];then
+            success="true";
+        fi;
+        ;;
+esac;
+
+# ---------------------------------------------------------------
+# [17] Store the result in associative arrays.
+if [[ ${actual_value} == "0.0.0" ]];then
+    actual_value="unknown";
+fi;
+
+if [[ ${source} == "framework" ]];then
+    A_dependency_checked["${dependency}"]=${success};
+    A_dependency_installed["${dependency}"]=${actual_value};
+elif [[ ${source} == "project" ]];then
+    A_dependency_checked_project["${dependency}"]=${success};
+    A_dependency_installed_project["${dependency}"]=${actual_value};
+    if [[ "${project_subcategory}" == *"project_dependencies_make"* ]];then
+        A_dependency_checked_project_make["${dependency}"]=${success};
+        A_dependency_installed_project_make["${dependency}"]=${actual_value};
+    elif [[ "${project_subcategory}" == *"project_dependencies_execute"* ]];then
+        A_dependency_checked_project_execute["${dependency}"]=${success};
+        A_dependency_installed_project_execute["${dependency}"]=${actual_value};
+    fi;
+fi;
+};

@@ -1,0 +1,201 @@
+function f_setup(){
+
+# About:            
+# - Install all the dependencies for the bash-x framework.
+# - Add the path to the framework to the PATH by adding it to the correct profile file.
+
+# Usage:
+# ./bash-x -S
+# ./bash-x --SETUP
+
+# ---------------------------------------------------------------
+# [1] Declare local variables with scope for this function only.
+
+local brew_dependencies;
+local vf_architecture;
+local profiles;
+local source_needed;
+local used_profile;
+    
+# ========================================================================================Mac
+
+# ---------------------------------------------------------------
+# [2] Check the OS of the user.
+
+if [[ "${vf_os_identify}" == "Mac" ]]; then
+
+    ${spacer};
+    ${dashLine};
+    printf "%b\n" "${cy}--> Step1 - ${rs}Checking framework packages:";
+    ${spacer};
+# ---------------------------------------------------------------
+# [3] Get the vf_architecture of the macOS machine.
+
+    vf_architecture=$(uname -m);
+    if [[ "$vf_architecture" == *"arm64"* ]];then
+        brew_home=/opt/homebrew/bin;
+        printf "%b\n" "${yl}--> Info - ${rs}${tick} This Mac has Apple silicon - will use correct jq package!";
+    else
+        brew_home=/usr/local/bin;
+        printf "%b\n" "${yl}--> Info - ${rs}${tick} This Mac has Intel silicon - will use correct jq package!";
+    fi;
+
+# ---------------------------------------------------------------
+# [4] Install Homebrew if missing.
+
+    which brew > /dev/null 2>&1;
+    if [[ $? != 0 ]];then
+        printf "%b\n" "${yl}--> Info - ${rs}${tick} Installing Homebrew package manager..";
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)";
+    else
+        printf "%b\n" "${yl}--> Info - ${rs}${tick} Homebrew package manager is installed.";
+    fi;
+
+# ---------------------------------------------------------------
+# [5] Install any required dependencies with brew.
+
+    brew_dependencies=( bash grep gawk gnu-sed coreutils jq );
+    for dependency in "${brew_dependencies[@]}"
+    do
+        brew list | grep -i ${dependency} > /dev/null 2>&1;
+        if [[ $? != 0 ]];then
+            printf "%b\n" "${yl}--> Info - ${rs}${tick} Installing Homebrew package: ${dependency}";
+            brew install ${dependency};
+        else
+            printf "%b\n" "${yl}--> Info - ${rs}${tick} Homebrew package is installed: ${dependency}";
+        fi;
+    done;
+fi;
+
+# ========================================================================================All 
+
+# Add the bash-x directory to the profile file used to instantiate the PATH.
+
+# When invoking a login shell bash will looks for its config files in this order:
+# [0] ~/.bash_profile
+# [1] ~/.bash_login
+# [2] ~/.profile
+# After finding the first one, it stops looking for the others so if there is a .bash_profile in the $HOME, bash will not look for .bash_login and .profile anymore.
+# https://askubuntu.com/questions/510709/i-cannot-find-bash-profile-in-ubuntu
+
+# ---------------------------------------------------------------
+# [6] Check to see which profile file is used.
+
+${spacer};
+${dashLine};
+printf "%b\n" "${cy}--> Step2 - ${rs}Checking local session profile:";
+${spacer};
+
+if [[ "$SHELL" == *"zsh"* ]]; then
+    printf "%b\n" "${yl}--> Info - ${rs}${tick} The default shell is: zsh";
+    profiles=( ~/.zshrc ~/.zprofile ~/.zshenv );
+else
+    printf "%b\n" "${yl}--> Info - ${rs}${tick} The default shell is: bash";
+    profiles=( ~/.bash_profile ~/.bash_login ~/.profile ~/.bashrc ~/.pam_environment );
+fi;
+source_needed="false";
+used_profile="";
+sleep 1;
+
+for profile in "${profiles[@]}"
+do
+    if [[ -f "$profile" ]]; then
+        used_profile=$profile;
+        printf "%b\n" "${yl}--> Info - ${rs}${tick} The profile is: ${used_profile}";
+        break;
+    fi;
+done;
+
+if [[ $used_profile == "" ]]; then
+    used_profile=${profiles[0]};
+    printf "%b\n" "${yl}--> Info - ${rs}${tick} The profile is: ${used_profile}";
+fi;
+sleep 1;
+
+# ---------------------------------------------------------------
+# [7] Ensure Homebrew is in the PATH.
+
+# On macOS, change the default version of bash used
+if [[ "${vf_os_identify}" == "Mac" ]]; then
+
+    ${spacer};
+    ${dashLine};
+    printf "%b\n" "${cy}--> Step3 - ${rs}Checking the PATH contains Homebrew:";
+    ${spacer};
+
+    # Check if bash version added to path and add it if not present.
+    if [[ "${vf_path_before}" != *"${brew_home}"* ]]; then
+        printf "%b\n" "${yl}--> Info - ${rs}${tick} Homebrew added to PATH.";
+        printf "\n%b\n" "export PATH=$brew_home:\$PATH" >> $used_profile;
+        printf "%b\n" "${yl}--> Info - ${rs}${PATH}";
+        source_needed="true";
+    else
+        printf "%b\n" "${yl}--> Info - ${rs}${tick} PATH already contains Homebrew.";
+        printf "%b\n" "${yl}--> Info - ${rs}${PATH}";
+    fi;
+fi;
+sleep 1;
+
+# ---------------------------------------------------------------
+# [8] Ensure framework is in the PATH.
+
+${spacer};
+${dashLine};
+printf "%b\n" "${cy}--> Step4 - ${rs}Checking the PATH contains the framework:";
+${spacer};
+
+if [[ "${vf_path_framework_home}" == *"/bash-x-dev/"* ]];then
+    vf_path_lib="${vf_path_framework_home}lib";
+else
+    vf_path_lib="${vf_path_framework_home}";
+fi;
+
+if [[ "${vf_path_before}" != *"${vf_path_lib}"* ]]; then
+    printf "%b\n" "${yl}--> Info - ${rs}${tick} Adding the framework to the PATH in ${used_profile}..";
+    printf "\n%b\n" "export BASHX_HOME=${vf_path_lib}" >> $used_profile;
+    printf "%b\n" "export PATH=\${BASHX_HOME}:\$PATH" >> $used_profile;
+    source_needed="true";
+else
+    printf "%b\n" "${yl}--> Info - ${rs}${tick} PATH already contains the framework..";
+    printf "%b\n" "${yl}--> Info - ${rs}${PATH}";
+fi;
+sleep 1;
+
+# ---------------------------------------------------------------
+# [9] Create framework folder structure.
+
+${spacer};
+${dashLine};
+printf "%b\n" "${cy}--> Step5 - ${rs}Create framework folder:";
+${spacer};
+sleep 1;
+
+echo ${vf_path_framework_home}jq/;
+echo ${vf_path_framework_home}json/;
+echo ${vf_path_framework_home}README/;
+echo ${vf_path_framework_home}.gitignore;
+
+mkdir -p ${vf_path_framework_home}jq/;
+mkdir -p ${vf_path_framework_home}json/inventory/platform1/;
+mkdir -p ${vf_path_framework_home}README/;
+touch ${vf_path_framework_home}.gitignore;
+
+f_setup_json_array_framework;
+f_setup_json_array_inventory;
+
+# ---------------------------------------------------------------
+# [10] Ask the user to source the profile file to add the new paths to the PATH.
+
+${spacer};
+${dashLine};
+printf "%b\n" "${cy}--> Step6 - ${rs}Setup summary:";
+${spacer};
+if [[ "${source_needed}" == "false" ]]; then
+    printf "%b\n" "${yl}--> Info - ${rs}${tick} All good - framework can be run from any folder.";
+    printf "%b\n" "${yl}--> Info - ${rs}\$ bash-x --HELP";
+else
+    printf "%b\n" "${yl}--> Info - ${rs}${tick} All good, but please apply the profile changes:";
+    printf "%b\n" "${yl}--> Info - ${rs}\$ source ${used_profile}";
+fi;
+${spacer};
+};

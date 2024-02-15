@@ -1,0 +1,110 @@
+{
+"inventory":{
+    "name":                                 "platform1",
+    "description":                          "customer platform1 in the acme cloud.",
+    "environment":                          "prod",
+    "servers":{
+        "prod1":{
+            "service":{
+                "service1":{
+                    "domain":               ".acme.ch",   
+                    "interface":            "eth0",
+                    "gateway":              "10.x.x.x",
+                    "platform1-prod11":     "10.x.x.x",
+                    "platform1-prod12":     "10.x.x.x",
+                    "platform1-prod13":     "10.x.x.x",
+                    "platform1-prod14":     "10.x.x.x",
+                    "platform1-prod15":     "10.x.x.x",
+                    "platform1-prod16":     "10.x.x.x"
+                },
+                "service2":{
+                    "domain":               ".sharedtcs.net",   
+                    "interface":            "eth1",
+                    "gateway":              "10.x.x.x",
+                    "platform1-prod11":     "10.x.x.x",
+                    "platform1-prod12":     "10.x.x.x",
+                    "platform1-prod13":     "10.x.x.x",
+                    "platform1-prod14":     "10.x.x.x",
+                    "platform1-prod15":     "10.x.x.x",
+                    "platform1-prod16":     "10.x.x.x"
+                },
+                "service3":{   
+                    "domain":               "",
+                    "interface":            "eth2",
+                    "gateway":              "10.x.x.x",
+                    "platform1-prod11":     "10.x.x.x",
+                    "platform1-prod12":     "10.x.x.x",
+                    "platform1-prod13":     "10.x.x.x",
+                    "platform1-prod14":     "10.x.x.x",
+                    "platform1-prod15":     "10.x.x.x",
+                    "platform1-prod16":     "10.x.x.x"
+                }
+            }
+        },
+        "prod2":{
+            "service":{
+                "service1":{
+                    "domain":               ".acme.ch",   
+                    "interface":            "eth0",
+                    "gateway":              "10.x.x.x",
+                    "platform2-prod21":     "10.x.x.x",
+                    "platform2-prod22":     "10.x.x.x",
+                    "platform2-prod23":     "10.x.x.x",
+                    "platform2-prod24":     "10.x.x.x",
+                    "platform2-prod25":     "10.x.x.x",
+                    "platform2-prod26":     "10.x.x.x"
+                },
+                "service2":{
+                    "domain":               ".sharedtcs.net",   
+                    "interface":            "eth1",
+                    "gateway":              "10.x.x.x",
+                    "platform2-prod21":     "10.x.x.x",
+                    "platform2-prod22":     "10.x.x.x",
+                    "platform2-prod23":     "10.x.x.x",
+                    "platform2-prod24":     "10.x.x.x",
+                    "platform2-prod25":     "10.x.x.x",
+                    "platform2-prod26":     "10.x.x.x"
+                },
+                "service3":{   
+                    "domain":               "",
+                    "interface":            "eth2",
+                    "gateway":              "10.x.x.x",
+                    "platform2-prod21":     "10.x.x.x",
+                    "platform2-prod22":     "10.x.x.x",
+                    "platform2-prod23":     "10.x.x.x",
+                    "platform2-prod24":     "10.x.x.x",
+                    "platform2-prod25":     "10.x.x.x",
+                    "platform2-prod26":     "10.x.x.x"
+                }
+            }
+        } 
+    },
+    "services":{     
+        "acme":{   
+            "apps":{   
+                "domain":                       ".acme.com",
+                "git":                          "138.x.x.x",
+                "jira":                         "138.x.x.x",
+                "bin":                          "138.x.x.x",
+                "artifactory":                  "138.x.x.x",
+                "s3appcloud":{
+                    "domain":                   ".acme.com",
+                    "ds11s3-scs":               "138.x.x.x",
+                    "ds11s3-scs2":              "138.x.x.x"
+                },
+                "splunk":{
+                    "domain":                   ".acme.net",
+                    "hsplsiemits":              "138.x.x.x",
+                    "hsplfwdp01":               "138.x.x.x",
+                    "hsplfwdt01":               "138.x.x.x"
+                }    
+            },
+            "ntp":{   
+                "domain":                       ".acme.net",
+                "dns1":                         "138.x.x.x",
+                "dns2":                         "138.x.x.x"
+            }
+        }
+    }
+  }
+}

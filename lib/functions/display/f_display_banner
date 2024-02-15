@@ -1,0 +1,31 @@
+function f_display_banner(){
+# About:     
+# - Display logo and header for stage screen display.
+# - Use shorter version for help screens.
+
+# Usage:
+# f_display_banner;
+
+# ---------------------------------------------------------------
+# [1] Clear the screen, display equals divider. 
+
+if [[ "${vf_framework_flags_display_color}" == "true" ]];then printf "%b\n" "${cl}"; fi;
+${equalsLine};
+${spacer};
+printf "%b\n" "${cyB}██████   █████  ███████ ██   ██       ██   ██ ";
+printf "%b\n" "${rdB}██   ██ ██   ██ ██      ██   ██        ██ ██  ";
+printf "%b\n" "${ylB}██████  ███████ ███████ ███████ █████   ███   ";
+printf "%b\n" "${grB}██   ██ ██   ██      ██ ██   ██        ██ ██  ${rs}";
+printf "%b\n" "${bold}██████  ██   ██ ███████ ██   ██       ██   ██ ${rs}";
+
+${spacer};
+${equalsLine};
+printf "%b\n" "${yl}--> Framework name:${cy}       ${vj_framework_name}";
+printf "%b\n" "${yl}--> About:${cy}                A lightweight SRE framework${rs}";
+printf "%b\n" "${yl}--> Framework repo:${cy}       ${vj_framework_repo}${rs}";
+printf "%b\n" "${yl}--> Git branch:${cy}           ${vf_git_branch}${rs}";
+printf "%b\n" "${yl}--> Version:${cy}              ${vj_framework_version}${rs}";
+printf "%b\n" "${yl}--> Framework Path:${cy}       ${vf_path_framework_home}${rs}";
+printf "%b\n" "${yl}--> Framework settings:${cy}   ${vf_path_framework_home}json/framework.json${rs}";
+${equalsLine};
+};

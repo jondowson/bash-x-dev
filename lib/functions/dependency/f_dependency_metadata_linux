@@ -1,0 +1,301 @@
+function f_dependency_metadata_linux(){
+
+# ---------------------------------------------------------------
+# [0] Declare local variables with scope for this function only.
+
+local system;
+local kernel_version;
+local kernel_release;
+local os_architecture;
+local cpu;
+local cpu_cores;
+local threads;
+local cpu_mode;
+local byte_order;
+local processes;
+local hypervisor;
+local virtualization;
+local ram;
+local ram_free;
+local ram_available;
+local disk;
+local disk_used;
+local disk_available;
+local disk_used_percent;
+local current_user;
+local users;
+local nb_users;
+local users_with_home;
+local nb_users_with_home;
+local last_users;
+local last_users2;
+local last_lastuser;
+local last_current;
+local groups;
+local nb_groups;
+local nb_crontab;
+local docker_container_list;
+local docker_container_nb;
+local podman_container_list;
+local podman_container_nb;
+local private_ip;
+local subnet_mask;
+local subnet_mask2;
+local public_ip;
+
+# ---------------------------------------------------------------
+# [1] os metadata.
+
+system=$(uname);
+
+A_metadata["os_system"]=${system};
+a_metadata_ordered+=( "os_system" );
+
+A_metadata["os_name"]=${vf_os_identify};
+a_metadata_ordered+=( "os_name" );
+
+kernel_version=$(uname -v);
+A_metadata["os_kernel_version"]=${kernel_version};
+a_metadata_ordered+=( "os_kernel_version" );
+
+kernel_release=$(uname -r);
+A_metadata["os_kernel_release"]=${kernel_release};
+a_metadata_ordered+=( "os_kernel_release" );
+
+os_architecture=$(uname -m);
+A_metadata["os_architecture"]=${os_architecture};
+a_metadata_ordered+=( "os_architecture" );
+
+# ---------------------------------------------------------------
+# [2] cpu metadata.
+
+# CPU name.
+# cpu=`cat /proc/cpuinfo  | grep 'model name'| uniq`
+cpu=$(lscpu | grep 'Model name');
+cpu=$(f_utils_strings_bpe "del_fromleft_upto_including_first" "$cpu" ":" | sed -e 's/^[ \t]*//');
+A_metadata["cpu_name"]=$cpu;
+a_metadata_ordered+=( "cpu_name" );
+
+# Number of cores.
+cpu_cores=$(lscpu | grep -w 'CPU(s):' | head -n 1);
+cpu_cores=$(f_utils_strings_bpe "del_fromleft_upto_including_first" "$cpu_cores" ":" | sed -e 's/^[ \t]*//');
+A_metadata["cpu_cores"]=$cpu_cores;
+a_metadata_ordered+=( "cpu_cores" );
+
+# Threads per core.
+threads=$(lscpu | grep -w 'Thread');
+threads=$(f_utils_strings_bpe "del_fromleft_upto_including_first" "$threads" ":" | sed -e 's/^[ \t]*//');
+A_metadata["cpu_threads"]=$threads;
+a_metadata_ordered+=( "cpu_threads" );
+
+# CPU op-mode.
+cpu_mode=$(lscpu | grep -w 'CPU op-mode(s)');
+cpu_mode=$(f_utils_strings_bpe "del_fromleft_upto_including_first" "$cpu_mode" ":" | sed -e 's/^[ \t]*//');
+A_metadata["cpu_mode"]=$cpu_mode;
+a_metadata_ordered+=( "cpu_mode" );
+
+byte_order=$(lscpu | grep -w 'Byte Order');
+byte_order=$(f_utils_strings_bpe "del_fromleft_upto_including_first" "$byte_order" ":" | sed -e 's/^[ \t]*//');
+A_metadata["cpu_byte_order"]=$byte_order;
+a_metadata_ordered+=( "cpu_byte_order" );
+
+# Number of processes.
+processes=$(ps -e --no-headers | wc -l);
+A_metadata["cpu_processes"]=$processes;
+a_metadata_ordered+=( "cpu_processes" );
+
+# ---------------------------------------------------------------
+# [3] VM metadata.
+
+# Hypervisor vendor.
+hypervisor=$(lscpu | grep -w 'Hypervisor');
+hypervisor=$(f_utils_strings_bpe "del_fromleft_upto_including_first" "${hypervisor}" ":" | sed -e 's/^[ \t]*//');
+A_metadata["vm_hypervisor_vendor"]=${hypervisor};
+a_metadata_ordered+=( "vm_hypervisor_vendor" );
+
+# Virtualization type.
+virtualization=$(lscpu | grep -w 'Virtualization');
+virtualization=$(f_utils_strings_bpe "del_fromleft_upto_including_first" "${virtualization}" ":" | sed -e 's/^[ \t]*//');
+A_metadata["vm_virtualization_type"]=${virtualization};
+a_metadata_ordered+=( "vm_virtualization_type" );
+
+# ---------------------------------------------------------------
+# [4] RAM metadata.
+
+ram=$(echo $(($(getconf _PHYS_PAGES) * $(getconf PAGE_SIZE) / (1024 * 1024))));
+A_metadata["ram_total (MB)"]=${ram};
+a_metadata_ordered+=( "ram_total (MB)" );
+
+ram_free=$(echo $(($(getconf _AVPHYS_PAGES) * $(getconf PAGE_SIZE) / (1024 * 1024))));
+A_metadata["ram_free (MB)"]=${ram_free};
+a_metadata_ordered+=( "ram_free (MB)" );
+
+ram_available=$(cat /proc/meminfo | grep -w "MemAvailable");
+ram_available=$(f_utils_strings_bpe "del_fromleft_upto_including_first" "${ram_available}" ": ");
+ram_available=$(f_utils_strings_bpe "keep_fromleft_upto_excluding_first" "${ram_available}" "k");
+ram_available=$(( ram_available / 1024 ));
+A_metadata["ram_available (MB)"]=${ram_available};
+a_metadata_ordered+=( "ram_available (MB)" );
+
+# ---------------------------------------------------------------
+# [5] Disk metadata.
+
+# get last line
+disk=$(df -m . | head -2 | tail -1 | awk '{print $2}');
+# echo disk:$disk;
+A_metadata["disk_total (MB)"]=${disk};
+a_metadata_ordered+=( "disk_total (MB)" );
+
+disk_used=$(df -m . | head -2 | tail -1 | awk '{print $3}');
+# echo disk_used:$disk_used;
+A_metadata["disk_used (MB)"]=${disk_used};
+a_metadata_ordered+=( "disk_used (MB)" );
+
+disk_available=$(df -m . | head -2 | tail -1 | awk '{print $4}');
+# echo disk_available:$disk_available;
+A_metadata["disk_available (MB)"]=${disk_available};
+a_metadata_ordered+=( "disk_available (MB)" );
+
+disk_used_percent=$(df -m . | head -2 | tail -1 | awk '{print $5}');
+# echo disk_used_percent:$disk_used_percent;
+A_metadata["disk_used_percent (MB)"]=${disk_used_percent};
+a_metadata_ordered+=( "disk_used_percent (MB)" );
+
+# ---------------------------------------------------------------
+# [6] User metadata.
+
+current_user=$(whoami);
+A_metadata["user_current"]=${current_user};
+a_metadata_ordered+=( "user_current" );
+
+# users=(`cat /etc/passwd | cut -d: -f1`)
+users=($(cat /etc/passwd | awk -F: '{print $1}'));
+A_metadata["user_users"]=${users[@]};
+a_metadata_ordered+=( "user_users" );
+
+nb_users=$(cat /etc/passwd | wc -l);
+A_metadata["user_nb_users"]=${nb_users};
+a_metadata_ordered+=( "user_nb_users" );
+
+users_with_home=($(cat /etc/passwd | grep '/home/' | awk -F: '{print $1}'));
+A_metadata["user_users_with_home"]=${users_with_home[@]};
+a_metadata_ordered+=( "user_users_with_home" );
+
+nb_users_with_home=$(cat /etc/passwd | grep '/home/' | wc -l);
+A_metadata["user_nb_users_with_home"]=${nb_users_with_home};
+a_metadata_ordered+=( "user_nb_users_with_home" );
+
+# last users that logged in --> including current
+last_users=($(last -5 | head -n -2 | awk '{print $1}'));
+A_metadata["user_last_users"]=${last_users[@]};
+a_metadata_ordered+=( "user_last_users" );
+
+# last users that logged in --> not including current
+# tail to delete first line
+# head to delete last 2 lines
+last_users2=($(last -6 | tail -n +2 | head -n -2 | awk '{print $1}'));
+A_metadata["user_last_users_no_current"]=${last_users2[@]};
+a_metadata_ordered+=( "user_last_users_no_current" );
+
+# last time last user logged in
+last_lastuser=$(last -a -2 ${last_users[1]} | tail -n +2 | head -n -2 | awk -F '[[:space:]][[:space:]]+' '{print $3}');
+last_lastuser=$(f_utils_strings_bpe "keep_fromleft_upto_excluding_first" "${last_lastuser}" "-");
+A_metadata["user_last_time_last_user"]=${last_lastuser};
+a_metadata_ordered+=( "user_last_time_last_user" );
+
+# last time current user logged in
+last_current=$(last -a -2 ${current_user} | tail -n +2 | head -n -2 | awk -F '[[:space:]][[:space:]]+' '{print $3}');
+last_current=$(f_utils_strings_bpe "keep_fromleft_upto_excluding_first" "${last_current}" "-");
+A_metadata["user_last_time_current_user"]=${last_current};
+a_metadata_ordered+=( "user_last_time_current_user" );
+
+groups=($(groups));
+A_metadata["user_groups"]=${groups[@]};
+a_metadata_ordered+=( "user_groups" );
+
+nb_groups=${#groups[@]};
+A_metadata["user_nb_groups"]=${nb_groups};
+a_metadata_ordered+=( "user_nb_groups" );
+
+# ---------------------------------------------------------------
+# [7] crontab metadata.
+
+# test adding 1 crontab
+# test for other users
+# for user in $(cut -f1 -d: /etc/passwd); do crontab -u $user -l; done
+# nb_crontab=`crontab -l 2>/dev/null | wc -l`
+nb_crontab=$(crontab -l 2>/dev/null | grep -ve "#\|^$" | wc -l);
+# echo nb_crontab:$nb_crontab;
+A_metadata["crontab_nb_crontab"]=${nb_crontab};
+a_metadata_ordered+=( "crontab_nb_crontab" );
+
+# ---------------------------------------------------------------
+# [8] container metadata.
+
+# Check if docker is installed.
+which docker > /dev/null 2>&1;
+if [[ $? == 0 ]];then
+    # list of container names
+    docker_container_list=($(docker ps --format '{{.Names}}'));
+    A_metadata["container_docker_container_list"]=${docker_container_list[@]};
+    a_metadata_ordered+=( "container_docker_container_list" );
+
+    # number of containers
+    docker_container_nb=${#docker_container_list[@]};
+    A_metadata["container_docker_container_nb"]=${docker_container_nb};
+    a_metadata_ordered+=( "container_docker_container_nb" );
+fi;
+
+# Check if podman is installed.
+which podman > /dev/null 2>&1;
+if [[ ${?} == 0 ]];then
+    # list of container names
+    podman_container_list=($(podman ps -a --format '{{.Names}}'));
+    A_metadata["container_podman_container_list"]=${podman_container_list[@]};
+    a_metadata_ordered+=( "container_docker_container_list" );
+
+    # number of containers
+    podman_container_nb=${#podman_container_list[@]};
+    A_metadata["container_podman_container_nb"]=${podman_container_nb};
+    a_metadata_ordered+=( "container_podman_container_nb" );
+fi;
+
+# ---------------------------------------------------------------
+# [9] Network metadata.
+
+# network info
+# interface card
+# interface_card=$(lspci | grep -i 'network\|ethernet\|wireless\|wi-fi');
+# # echo interface_card:$interface_card;
+# A_metadata["network_interface_card"]=$interface_card;
+# a_metadata_ordered+=( "network_interface_card" );
+
+# Private ip
+# private_ip=$(hostname -I | awk '{print $1}')
+private_ip=$(f_utils_network "calc_ip_local");
+A_metadata["network_private_ip"]=${private_ip};
+a_metadata_ordered+=( "network_private_ip" );
+
+subnet_mask=$(ip -o -f inet addr show | grep ${private_ip} | awk '{print $4}');
+A_metadata["network_subnet_mask"]=${subnet_mask};
+a_metadata_ordered+=( "network_subnet_mask" );
+
+# Get subnet.
+# Check that ifconfig is installed.
+which ifconfig > /dev/null 2>&1;
+if [[ $? == 0 ]];then
+    subnet_mask2=$(ifconfig | grep ${private_ip} | awk '{print $4}');
+    A_metadata["network_subnet_mask2"]=${subnet_mask2};
+    a_metadata_ordered+=( "network_subnet_mask2" );
+fi;
+
+# Public ip
+# Check curl is installed.
+which curl > /dev/null 2>&1;
+if [[ $? == 0 ]];then
+    public_ip=$(f_utils_network "calc_ip_public");
+    A_metadata["network_public_ip"]=${public_ip};
+    a_metadata_ordered+=( "network_public_ip" );
+fi;
+
+};

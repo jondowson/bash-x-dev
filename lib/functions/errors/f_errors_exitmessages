@@ -1,0 +1,62 @@
+function f_errors_exitmessages(){
+
+# About:
+# - This function is called when an error is trapped in the project code.
+# - Project errors can be either be ignored or result in an exit (will call 'f_stages_functions_final').
+#   - This is determined by:
+#       - the type of error (e.g. a critical missing input file check should exit).
+#       - the status of the flag 'vf_framework_flags_behaviour_fastfail' as defined in the project.json or passed as a runtime flag.
+
+# Usage:
+# f_errors_exitmessages "${FUNCNAME[0]}: $((LINENO))" "2" "${pid}";
+# f_errors_exitmessages "${FUNCNAME[0]}: $((LINENO))" "3";
+# - param1: name of the function and line number where the error occurred.
+# - param2: the matching array error code (defined in the file 'errors.json').
+# - param3: the pid if applicable.
+
+# ---------------------------------------------------------------
+# [1] Create local function scope variables.
+
+local exitlocation;
+local errcode;
+local pid;
+local message_string;
+local hint_string;
+
+# ---------------------------------------------------------------
+# [2] Assign passed params.
+
+exitlocation="${1}";
+errcode="${2}";
+pid="${3}";
+
+# For concurrent stages, the failed pid is passed by the calling stage's multipids_wait function.
+# For non-current stages that do not generate pids, nothing will be passed as third param to this function.
+# For clarification downstream ('f_stages_functions_final'), check for this and if empty assign it the value 'nopid'.
+if [[ "${pid}" == "" ]]; then pid="nopid"; fi; 
+
+# ---------------------------------------------------------------
+# [3] Create strings to be resolved to key-pairs in the 'errors.json'
+
+message_string="vj_errors_s${vp_stage_number}_e${errcode}_message";
+hint_string="vj_errors_s${vp_stage_number}_e${errcode}_hint";
+
+# ---------------------------------------------------------------
+# [4] Set global variables used in 'f_stages_functions_final'
+
+f_arrays_set_var "vf_status_exitlocation" "${exitlocation}";
+f_arrays_set_var "vf_status_exitcode"     "${errcode}";
+f_arrays_set_var "vf_status_stackTrace"   "$(for i in ${!FUNCNAME[@]}; do printf "%s" "${FUNCNAME[$i]},"; done;)";
+f_arrays_set_var "vf_status_exitmessage"  "$(echo ${!message_string})";
+f_arrays_set_var "vf_status_exithint"     "$(echo ${!hint_string})";
+
+# ---------------------------------------------------------------
+# [5] Add to on-going array that is used to display final error message summary.
+
+A_project_stage_errors["${pid},${vp_stage_number},${vf_status_exitcode}"]="${vf_status_exitmessage},${vf_status_exithint}";
+
+# ---------------------------------------------------------------
+# [6] If exiting here, then the above 'A_project_stage_errors' array will be used to display messages in the now called final summary stage.
+
+if [[ "${vf_framework_flags_behaviour_fastfail}" == "true" ]];then f_stages_functions_final; fi;      
+};

@@ -1,0 +1,19 @@
+function f_stages_skip(){
+
+flag="${1}";
+value="${2}";
+
+skip="false";
+if [[ "${vf_framework_flags_behaviour_skipstages}" == "true" ]];then
+    for k in ${a_skipstages[@]}
+    do
+        if [[ "${k}" == "${vp_stage_number}" ]];then
+            skip="true";
+        fi;
+    done;
+fi;
+if [[ "${skip}" == "true" ]] || [[ "${flag}" == "${value}" ]];then 
+    # Append to the skipstages array.
+    a_skipstages+=( "${vp_stage_number}" );
+fi;    
+};

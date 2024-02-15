@@ -1,0 +1,112 @@
+function f_arrays_paths_clean_project(){
+
+# ---------------------------------------------------------------
+# [1] Loop through the array of all project variables.
+
+for key in ${!A_project_vars[@]}
+do
+  
+  result="";
+  new_key="";
+  new_value="";
+  this_value="";
+
+  # Filter on the 'type' tag in the help.json
+  if [[ "${key}" == *"_type" ]];then
+
+    type_value="${A_project_vars[${key}]}";
+
+    # Remove the last part, i.e. '_type'.
+    new_key=$(echo $key | ${vf_cmd_sed} 's|\(.*\)_.*|\1|');
+    
+    # Get the current default value. 
+    new_value="${A_project_vars[${new_key}]}";
+
+# ---------------------------------------------------------------
+# [2] Correct forward slashes in paths if applicable and resolve ~/ to $HOME.
+
+    case "${type_value}" in
+
+    # ---------------------------------------------------------------
+    "path_"*)
+
+      # Fix the path.
+      this_value=$(f_utils_strings_bpe "paths_single_slash" "${new_value}");
+
+      # Path contains a HOME shortcut.
+      if [[ "${this_value}" == "~/"* ]];then
+
+        # Strip the tilde and forward slash and swap in the path to the user home.
+        result=$(f_utils_strings_bpe "del_fromleft_upto_including" "${this_value}" "~/");
+        
+        # Update the variable in the array and declare it again.
+        f_arrays_set_var "${new_key}" "${HOME}/${result}";
+      else
+
+        # Update the variable in the array and declare it again.
+        f_arrays_set_var "${new_key}" "${this_value}";
+      fi;;
+
+    esac;
+
+  fi;
+
+done;
+
+# ---------------------------------------------------------------
+# [3] Loop through the array of all project variables.
+
+for key in ${!A_project_vars[@]}
+do
+  
+  result="";
+  new_key="";
+  new_value="";
+  this_value="";
+
+  # Filter on the 'type' tag in the help.json
+  if [[ "${key}" == *"_type" ]];then
+
+    type_value="${A_project_vars[${key}]}";
+
+    # Remove the last part, i.e. '_type'.
+    new_key=$(echo $key | ${vf_cmd_sed} 's|\(.*\)_.*|\1|');
+    
+    # Get the current default value. 
+    new_value="${A_project_vars[${new_key}]}";
+
+# ---------------------------------------------------------------
+# [4] Correct relative paths if applicable.
+
+    case "${type_value}" in
+
+    # ---------------------------------------------------------------
+    *"_local_relative_framework"*)
+
+      # Remove path up to and including the project folder.
+      relative_path=$(f_utils_strings_bpe "del_fromleft_upto_including" "${new_value}" "/bash-x/");
+
+      # Update the variable in the array and declare it again.
+      f_arrays_set_var "${new_key}" "${vf_path_framework_home}${relative_path}";
+      ;;
+
+    # ---------------------------------------------------------------
+    *"_local_relative_project"*)
+
+      # Remove path up to and including the project folder.
+      relative_path=$(f_utils_strings_bpe "del_fromleft_upto_including" "${new_value}" "/${vp_project_name}/");
+
+      # Update the variable in the array and declare it again.  
+      f_arrays_set_var "${new_key}" "${vp_project_rootpath}${relative_path}";
+      ;;
+    # ---------------------------------------------------------------
+    *"custom_"*)
+
+      # Pass this type to the project's handling function.  
+      fp_project_custom_flagtype "${type_value}" "${new_key}" "${new_value}";
+      ;;
+
+    esac;
+  fi;
+done;
+};

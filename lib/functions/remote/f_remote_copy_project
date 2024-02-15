@@ -1,0 +1,5 @@
+function f_remote_copy_framework(){
+
+# Copy the framework to the remote server with error code 5.
+f_ssh_scp_send "${vf_path_projects}${vp_project_name}" "${vf_framework_flags_ssh_targetpath}" "5";
+};

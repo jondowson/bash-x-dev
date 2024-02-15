@@ -1,0 +1,66 @@
+function f_dependency_metadata_json(){
+
+    # ---------------------------------------------------------------
+    # [1] Declare local variables with scope for this function only.
+
+    # ! Do not set vf_metadata_string as local since it is used in other scripts !
+    # local vf_metadata_string;
+    local length;
+    local lastIndex;
+    local total_count;
+    local category_count;
+    local prevf_category;
+    local category;
+    local clean_name;
+
+    # ---------------------------------------------------------------
+    # [2] Produce a nice json.
+
+    # {
+    #     "metadata":{
+    #         "CPU":{
+    #             "name": "intel"
+    #         },
+    #         "container":{
+    #             "name": "docker"
+    #         }
+    #     }
+    # }
+
+    if [[ $vj_framework_flags_tools_inspect == "json" ]] || [[ $vj_framework_flags_tools_inspect == "" ]];then
+
+        vf_metadata_string='{ "metadata":{';
+        length=${#A_metadata[@]};
+        lastIndex=$(( $length - 1 ));
+        total_count=0;
+        category_count=0;
+        prevf_category="";
+
+        for i in "${a_metadata_ordered[@]}"
+        do
+            category=$(f_utils_strings_bpe "keep_fromleft_upto_excluding_first" "${i}" "_");
+            clean_name=$(f_utils_strings_bpe "del_fromleft_upto_including_first" "${i}" "_");
+            if [[ $total_count == 0 ]];then
+                vf_metadata_string+="\"$category\":{";
+            fi;
+            if [[ $total_count != 0 ]] && [[ $category != $prevf_category ]];then
+                vf_metadata_string+="},\"$category\":{";
+                category_count=0;
+            fi;
+            if [[ $category_count != 0 ]];then
+                vf_metadata_string+=',';
+            fi;
+            prevf_category=$category;
+            vf_metadata_string+="\"${clean_name}\": \"${A_metadata[$i]}\"";
+
+            if [[ $total_count == $lastIndex ]];then
+                vf_metadata_string+='}';
+            fi;
+            category_count=$((category_count + "1"));
+            total_count=$((total_count + "1"));
+        done;
+
+        vf_metadata_string+='},';
+
+    fi;
+};

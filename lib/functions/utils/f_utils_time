@@ -1,0 +1,38 @@
+function f_utils_time(){
+
+# About:            
+# - Operations involving time.
+# - Supply the command to use and the function will return the result.
+
+# Usage:
+# result=$(f_utils_network "calc_ip_local");
+# - see examples below for each case statement.
+
+# ---------------------------------------------------------------
+# [1] Declare local variables with scope for this function only.
+
+local action;
+local result;
+
+# ---------------------------------------------------------------
+# [2] Assign the passed parameters.
+
+action="${1}";
+
+# ---------------------------------------------------------------
+# [3] Select the required action from the case statement. 
+
+case "${action}" in
+
+# ---------------------------------------------------------------
+  "script_duration")
+    result=$(date +%s);
+    result=$((result-vf_starttime));;
+
+esac;
+
+# ---------------------------------------------------------------
+# [4] Return the result to the calling function.
+
+printf "${result}";
+};

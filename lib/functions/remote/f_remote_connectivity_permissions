@@ -1,0 +1,9 @@
+function f_remote_connectivity_permissions() {
+
+# About:
+# - Confirm connectivity to server and the ability to write to the bash-x folder.
+# - If not present the following function will create an error for this stage and add it to the error array.
+
+# [1]  Run this command remotely.
+f_ssh_cmd "touch ${SSH_PATH_TARGET}bash-x.test && rm ${SSH_PATH_TARGET}bash-x.test" "1";
+};

@@ -1,0 +1,308 @@
+function f_framework(){
+
+# About:
+# - Processes any passed flags.
+# - Source project files.
+# - Check project resources are available.
+# - Display help screens for framework or project.
+# - Call project code.
+
+# Usage:
+# f_framework ${vf_args_passed};
+# - Pass in any user passed parameters.
+
+# ---------------------------------------------------------------
+# [1] Ensure the first flag passed is one of these.
+#     Or no flag for default action --HELP.
+
+if [[ "${1}" != "-P" ]]  && [[ "${1}" != "--PROJECT" ]] \
+&& [[ "${1}" != "-H" ]]  && [[ "${1}" != "--HELP" ]] \
+&& [[ "${1}" != "-I" ]]  && [[ "${1}" != "--INSPECT" ]] \
+&& [[ "${1}" != "-S" ]]  && [[ "${1}" != "--SETUP" ]] \
+&& [[ "${1}" != "-SK" ]] && [[ "${1}" != "--SKELETON" ]] \
+&& [[ "${1}" != "-MF" ]] && [[ "${1}" != "--MINFRAMEWORK" ]] \
+&& [[ "${1}" != "-MP" ]] && [[ "${1}" != "--MINPROJECT" ]] \
+&& [[ "${1}" != "" ]]; then
+  # Else exit with error message.
+  f_display_colors "true";
+  f_arrays_set_var "vf_dynamic_error_msg" "Wrong flag or flag order with: ${vf_args_passed}";
+  f_errors_exitmessages_framework "${FUNCNAME[0]}: $((LINENO))" "framework_flags";
+fi;
+
+# ---------------------------------------------------------------
+# [2] Process the flags.
+
+# If the number of flags passed is greater than 0, then process each one.
+if [[ "${#}" -gt 0 ]]; then
+  while test $# -gt 0; do
+    case "$1" in
+    -AA|--AUTHAPPROACH)
+      shift; 
+      f_arrays_set_var "vf_framework_flags_ssh_approach" "${1}";
+      shift;;
+    -CD|--COLORDISPLAY)
+      shift; 
+      f_arrays_set_var "vf_framework_flags_display_color" "${1}";
+      if [[ "${vf_framework_flags_display_color}" != "true" ]];then f_display_colors "false";fi;
+      shift;; 
+    -FF|--FASTFAIL)
+      f_arrays_set_var "vf_framework_flags_behaviour_fastfail" "true";
+      shift;;  
+    -H|--HELP)
+      f_arrays_set_var "vf_framework_flags_help" "true";
+      shift;;          
+    -I|--INSPECT)
+      f_arrays_set_var "vf_framework_flags_tools_inspect" "true";
+      shift;;
+    -L|--LIMIT)
+      shift; 
+      f_arrays_set_var "vf_framework_flags_behaviour_limit" "${1}";
+      if [[ "${vf_framework_flags_behaviour_limit}" == "" ]];then 
+        f_arrays_set_var "vf_framework_flags_behaviour_limit" "false";
+      else  
+        a_limit=(${vf_framework_flags_behaviour_limit//,/ });
+      fi;
+      shift;;
+    -MF|--MINFRAMEWORK)
+      f_arrays_set_var "vf_framework_flags_tools_minframework" "true";
+      if [[ "${vf_bashx_minified}" == "true" ]];then
+        f_display_colors "true"; 
+        printf "%b\n" "${yl}--> Info - ${rs}Exiting as the '--MINFRAMEWORK' flag is reserved for ${cy}bash-x-dev${rs}.";
+        exit 1;
+      fi;
+      shift;;
+    -MP|--MINPROJECT)
+      f_arrays_set_var "vf_framework_flags_tools_minproject" "true";
+      shift;;
+    -P|--PROJECT)
+      shift;
+      f_arrays_set_var "vp_project_name" "${1}";
+      f_arrays_set_var "vp_project_rootpath" "${vf_path_projects}${vp_project_name}/";
+      f_arrays_set_var "vp_stage_number" "0";
+      # If project has not been specified then exit.
+      if [[ "${vp_project_name}" == "" ]] || [[ ! -d "${vp_project_rootpath}" ]];then
+        f_arrays_set_var "vf_dynamic_error_msg" "Bad project rootpath: ${vp_project_rootpath}";
+        f_errors_exitmessages_framework "${FUNCNAME[0]}: $((LINENO))" "framework_flags";
+      # Check if project start file or minimised file exists.
+      elif [[ ! -f "${vp_project_rootpath}lib/fp_project_start" ]] && [[ ! -f "${vp_project_rootpath}${vp_project_name}" ]];then
+        f_arrays_set_var "vf_dynamic_error_msg" "Project code not found using this path: ${vp_project_rootpath}${vp_project_name}";
+        f_errors_exitmessages_framework "${FUNCNAME[0]}: $((LINENO))" "framework_flags";
+      else
+        # Determine if project being run is a minimised version of the project or not.
+        if [[ "${vp_project_name}" == *".min"* ]];then
+          # Source the minimised project file that includes all project functions.
+          source "${vp_project_rootpath}${vp_project_name}";
+        else
+          filesToSource="$(find ${vp_project_rootpath}lib -type f ! -name "*.json")";
+          for file in $(printf "%s\n" "$filesToSource"); do
+            [ -f $file ] && . $file;
+          done;
+        fi;
+        # Check all project json files exist.
+        # project.json, help.json, arrays.json, errors.json and stages.json
+        f_check_project_json_exist;
+        if [[ "${vf_args_passed}" == *"-H"* ]] || [[ "${vf_args_passed}" == *"--HELP"* ]];then
+          f_display_colors "true"; 
+          printf "%b\n" "${yl}--> Info - ${rs}Generating --HELP screen for project: ${cy}${vp_project_name}${rs}";
+        elif [[ "${vf_args_passed}" == *"-MP"* ]] || [[ "${vf_args_passed}" == *"--MINPROJECT"* ]];then
+          f_display_colors "true";
+          printf "%b\n" "${yl}--> Info - ${rs}Generating minimised version of project: ${cy}${vp_project_name}${rs}";
+        elif [[ "${vf_args_passed}" == *"-I"* ]] || [[ "${vf_args_passed}" == *"--INSPECT"* ]];then
+          f_display_colors "true";
+          printf "%b\n" "${yl}--> Info - ${rs}Generating json inspection for project: ${cy}${vp_project_name}${rs}";
+        else
+          f_display_colors "true";
+          printf "%b\n" "${yl}--> Info - ${rs}Reading the json files for project: ${cy}${vp_project_name}${rs}";
+        fi;
+        if [[ "${vf_args_passed}" == *"-I"* ]] || [[ "${vf_args_passed}" == *"--INSPECT"* ]];then
+          project_json_file="${vp_project_rootpath}json/project/project.json";
+          printf "%b\n" "--> [1/1]: ${rs}Processing ${project_json_file}";
+          if [ $(cat "${project_json_file}" | ${jq} empty > /dev/null 2>&1; echo $?) -ne 0 ]; then
+              echo "Bad json in: ${json_file}!"
+              exit 1;
+          else
+              f_json_recurse "$(cat ${project_json_file})" "vj";
+              f_arrays_declare_vars "json_project";
+          fi;
+        elif [[ "${vf_args_passed}" == *"-MP"* ]] || [[ "${vf_args_passed}" == *"--MINPROJECT"* ]];then
+          :;
+        else
+          # Process json files and declare bash variables.
+          # This takes longer than ideal but thats life.
+          f_json_project_process;
+        fi;
+        # To keep in global scope the arrays defined in 'arrays.json' declare them here.
+        for key in "${!A_json_arrays[@]}"
+        do
+          array_name=$(f_utils_strings_bpe "del_fromleft_upto_including" "${key}" "arrays_index_");
+          if [[ "${key}" == *"_name" ]] && [[ "${key}" == *"arrays_keypair"* ]];then
+            value=${A_json_arrays[${key}]};
+            declare -A "A_${value}";
+          elif [[ "${key}" == *"_name" ]] && [[ "${key}" == *"arrays_index"* ]];then
+            value=${A_json_arrays[${key}]};
+            declare -a "a_${value}";
+          fi;
+        done;
+        # Create root logs folder.
+        mkdir -p "${vp_project_rootpath}input_output";
+      fi;
+      shift;; 
+    -RC|--REMOTECOMPUTE)
+      f_arrays_set_var "vf_framework_flags_behaviour_remotecompute" "true";
+      shift;;   
+    -SK|--SKELETON)
+      f_arrays_set_var "vf_framework_flags_tools_skeleton" "true";
+      shift;;
+    -SS|--SKIPSTAGES)
+      shift; 
+      f_arrays_set_var "vf_framework_flags_behaviour_skipstages" "${1}";
+      if [[ "${vf_framework_flags_behaviour_skipstages}" == "" ]];then 
+        f_arrays_set_var "vf_framework_flags_behaviour_skipstages" "false";
+      else  
+        a_skipstages=(${vf_framework_flags_behaviour_skipstages//,/ });
+      fi;
+      shift;;
+    -SSHI|--SSHINTERFACE)
+      shift; 
+      f_arrays_set_var "vf_framework_flags_ssh_interface" "${1}";
+      shift;;
+    -SSHKP|--SSHKEYPATH)
+      shift; 
+      f_arrays_set_var "vf_framework_flags_ssh_keypath" "${1}";
+      shift;;
+    -SSHPP|--SSHPASSPATH)
+      shift; 
+      f_arrays_set_var "vf_framework_flags_ssh_passpath" "${1}";
+      shift;;
+    -SSHTP|--SSHTARGETPATH)
+      shift; 
+      f_arrays_set_var "vf_framework_flags_ssh_targetpath" "${1}";
+      shift;;
+    -SSHU|--SSHUSER)
+      shift; 
+      f_arrays_set_var "vf_framework_flags_ssh_user" "${1}";
+      shift;;
+    -TU|--TIDYUP)
+      shift; 
+      f_arrays_set_var "vf_framework_flags_behaviour_tidyup" "${1}";
+      shift;;
+    -TR|--TRACE)
+      f_arrays_set_var "vf_framework_flags_behaviour_trace" "true";
+      shift;; 
+    *)
+    # Any passed in flags can then replace the default flag settings set above. 
+    vf_flag_current="${1}";
+    vf_flag_current_value=$(shift && echo "${1}");
+    # Call the project flag function to check/process this flag.
+    f_check_project_flags;
+    shift;
+    shift;;
+    esac;
+  done;
+
+# No flag was passed so by default set the flag for framework help.
+else
+  f_arrays_set_var "vf_framework_flags_help" "true";
+fi;
+
+# Correct any paths for double slashes and resolve '~/' as ${HOME}
+f_arrays_paths_clean_framework;
+
+# Check and set the auth parameters.
+if [[ "${vf_framework_flags_authapproach}" != "false" ]] && [[ "${vf_framework_flags_behaviour_remotecompute}" != "true" ]];then
+  f_auth;
+fi;
+
+# ---------------------------------------------------------------
+# [3] Calculate number of stages for project.
+
+count=1;
+while :;
+do
+    # Create dynamic strings.
+    stage="vp_project_stages_s${count}";
+    stage_title="${stage}_title";
+    title="${A_project_vars[${stage_title}]}";
+
+    # Check if stage exists - exit loop if not.
+    if [[ -z "${title}" ]]; then
+        count=$((count-1));
+        break;
+    fi;
+    count=$((count+1));
+done;
+f_arrays_set_var "vp_stage_count" "${count}";
+
+# ---------------------------------------------------------------
+# [4] Initiate colors.
+
+if [[ "${vf_framework_flags_display_color}" == "true" ]];then 
+  f_display_colors "true"; 
+else 
+  f_display_colors "false";
+fi;
+
+# ---------------------------------------------------------------
+# [5] Handle --INSPECT flag.
+
+if [[ "${vf_framework_flags_tools_inspect}" == "true" ]];then
+  f_dependency_step1 "true";
+  exit 0;
+fi;
+
+# ---------------------------------------------------------------
+# [6] Display framework banner.
+
+f_display_banner;
+
+# ---------------------------------------------------------------
+# [7] Handle help flags - either for framework or a specified project. 
+
+if [[ "${vf_framework_flags_help}" == "true"  ]];then
+  
+  if [[ "${vp_project_name}" == "" ]];then
+    f_display_help_framework;
+  else
+    f_display_help_project;
+    f_arrays_set_var "vp_stage_number" "HELP";
+    fp_project_custom_runorder;
+  fi;
+  # Help has been displayed so exit code 0.
+  exit 0;
+fi;
+
+# ---------------------------------------------------------------
+# [8] Handle --SKELETON flag. 
+
+if [[ "${vf_framework_flags_tools_skeleton}" == "true"  ]];then
+  f_skeleton;
+  exit 0;
+fi;
+
+# ---------------------------------------------------------------
+# [9] Handle --MINFRAMEWORK flag. 
+
+if [[ "${vf_framework_flags_tools_minframework}" == "true"  ]];then
+  f_minimise_framework;
+  exit 0;
+fi;
+
+# ---------------------------------------------------------------
+# [10] Handle --MINPROJECT flag. 
+
+if [[ "${vf_framework_flags_tools_minproject}" == "true"  ]];then
+  f_minimise_project;
+  exit 0;
+fi;
+
+# ---------------------------------------------------------------
+# [11] Source and call the start script for the chosen project. 
+
+# If running project on a remote server then start here.
+if [[ "${vf_framework_flags_behaviour_remotecompute}" == "true" ]]; then
+  fp_project_start_remote;
+# If running this on the local origin server then start here.
+else
+  fp_project_start;
+fi;
+};

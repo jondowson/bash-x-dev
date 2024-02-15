@@ -1,0 +1,114 @@
+function f_dependency_metadata_macos(){
+
+    # ---------------------------------------------------------------
+    # [0] Declare local variables with scope for this function only.
+
+    local system;
+    local kernel_version;
+    local kernel_release;
+    local os_architecture;
+
+    local disk;
+    local disk_used;
+    local disk_available;
+    local disk_used_percent;
+
+    local nb_crontab;
+
+    local docker_container_list;
+    local docker_container_nb;
+    local podman_container_list;
+    local podman_container_nb;
+    
+    # ---------------------------------------------------------------
+    # [1] os metadata.
+
+    system=$(uname);
+
+    A_metadata["os_system"]=${system};
+    a_metadata_ordered+=( "os_system" );
+
+    A_metadata["os_name"]=${vf_os_identify};
+    a_metadata_ordered+=( "os_name" );
+
+    kernel_version=$(uname -v);
+    A_metadata["os_kernel_version"]=${kernel_version};
+    a_metadata_ordered+=( "os_kernel_version" );
+
+    kernel_release=$(uname -r);
+    A_metadata["os_kernel_release"]=${kernel_release};
+    a_metadata_ordered+=( "os_kernel_release" );
+
+    os_architecture=$(uname -m);
+    A_metadata["os_architecture"]=${os_architecture};
+    a_metadata_ordered+=( "os_architecture" );
+
+    # ---------------------------------------------------------------
+    # [5] Disk metadata.
+
+    # get last line
+    disk=$(df -m . | head -2 | tail -1 | awk '{print $2}');
+    # echo disk:$disk;
+    A_metadata["disk_total (MB)"]=${disk};
+    a_metadata_ordered+=( "disk_total (MB)" );
+
+    disk_used=$(df -m . | head -2 | tail -1 | awk '{print $3}');
+    # echo disk_used:$disk_used;
+    A_metadata["disk_used (MB)"]=${disk_used};
+    a_metadata_ordered+=( "disk_used (MB)" );
+
+    disk_available=$(df -m . | head -2 | tail -1 | awk '{print $4}');
+    # echo disk_available:$disk_available;
+    A_metadata["disk_available (MB)"]=${disk_available};
+    a_metadata_ordered+=( "disk_available (MB)" );
+
+    disk_used_percent=$(df -m . | head -2 | tail -1 | awk '{print $5}');
+    # echo disk_used_percent:$disk_used_percent;
+    A_metadata["disk_used_percent (MB)"]=${disk_used_percent};
+    a_metadata_ordered+=( "disk_used_percent (MB)" );
+
+    # ---------------------------------------------------------------
+    # [7] crontab metadata.
+
+    # test adding 1 crontab
+    # test for other users
+    # for user in $(cut -f1 -d: /etc/passwd); do crontab -u $user -l; done
+    # nb_crontab=`crontab -l 2>/dev/null | wc -l`
+    # delete extra spaces before the number
+    nb_crontab=$(crontab -l 2>/dev/null | grep -ve "#\|^$" | wc -l | sed 's/^ *//g' | sed 's/$ *//g' | sed 's/   */ /g');
+    # echo nb_crontab:$nb_crontab;
+    A_metadata["crontab_nb_crontab"]=${nb_crontab};
+    a_metadata_ordered+=( "crontab_nb_crontab" );
+
+    # ---------------------------------------------------------------
+    # [8] container metadata.
+
+    # Check if docker is installed.
+    which docker > /dev/null 2>&1;
+    if [[ $? == 0 ]];then
+        # list of container names
+        docker_container_list=($(docker ps --format '{{.Names}}'));
+        A_metadata["container_docker_container_list"]=${docker_container_list[@]};
+        a_metadata_ordered+=( "container_docker_container_list" );
+
+        # number of containers
+        docker_container_nb=${#docker_container_list[@]};
+        A_metadata["container_docker_container_nb"]=${docker_container_nb};
+        a_metadata_ordered+=( "container_docker_container_nb" );
+    fi;
+
+    # Check if podman is installed.
+    which podman > /dev/null 2>&1;
+    if [[ ${?} == 0 ]];then
+        # list of container names
+        podman_container_list=($(podman ps -a --format '{{.Names}}'));
+        A_metadata["container_podman_container_list"]=${podman_container_list[@]};
+        a_metadata_ordered+=( "container_docker_container_list" );
+
+        # number of containers
+        podman_container_nb=${#podman_container_list[@]};
+        A_metadata["container_podman_container_nb"]=${podman_container_nb};
+        a_metadata_ordered+=( "container_podman_container_nb" );
+    fi;
+
+};

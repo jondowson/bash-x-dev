@@ -1,0 +1,104 @@
+function f_utils_strings(){
+
+# About:            
+# - Various useful operations to perform on strings.
+
+# Usage:
+# - see examples below for each case statement.
+# - examples are based on this file 'twinkle.txt'
+
+
+# ---------------------------------------------------------------
+# [1] Declare local variables with scope for this function only.
+
+local action;
+local result;
+local param1;
+local param2;
+
+# ---------------------------------------------------------------
+# [2] Assign the passed parameters.
+
+action="${1}";
+param1="${2}"; 
+param2="${3}";    
+
+# ---------------------------------------------------------------
+# [3] Select the required action from the case statement. 
+
+case "${action}" in
+
+# ---------------------------------------------------------------
+  "bashvar_swap")
+    result="${param1//-/d}";    
+    result="${result//:/c}";   
+    result="${result//./p}";     
+    result="${result////s}";    
+    result="${result//\\/s}";   
+    printf "%s" "${result}";;
+    
+    # - replace dash with d
+    # : replace colon with c
+    # . replace point (dot) wit p
+    # / replace forward slash with f
+    # \ replace backslash with b
+
+
+    # usage example:
+    # bash_variable="http://google.com"
+    # bash_variable=$(f_utils_strings "bashvar_swap" "${bash_variable}");
+    # - bash_variable --> "httpcffgooglepcom".
+    # - It may not be pretty but it is now a valid bash variable name!
+    # - Obviously the above function does not include every disallowed character (§!ä...). 
+    # - But works well for url addresses and hostnames.
+
+# ---------------------------------------------------------------
+  "has_substring")
+    while IFS=';' read -ra sub; do
+        for i in "${sub[@]}"; do
+            if [[ "${param1}" == *"${i}"* ]]; then
+                printf "%s" "${i}";
+                break;
+            fi;
+        done;
+    done <<< "$param2";;
+
+    # usage example:
+    # - pass a single substring or a semi-colon separated list of substrings to check.
+    # - will exit on occurrence of first match or for no match return empty string.
+
+# ---------------------------------------------------------------
+  "convert_case")
+    if [[ "${param1}" == "upper" ]];then
+        result=$(echo $param2 | ${vf_cmd_awk} '{print toupper($0)}');
+    elif [[ "${param1}" == "lower" ]];then
+        result=$(echo $param2 | ${vf_cmd_awk} '{print tolower($0)}');
+    else
+        echo "specify either upper or lower";
+    fi;
+    printf "${result}";;
+
+    # usage example:
+    # - pass a single substring or a semi-colon separated list of substrings to check.
+    # - will exit on occurrence of first match or for no match return empty string.
+
+# ---------------------------------------------------------------
+  "count_chars")
+    result="${param1//[^${param2}]}";
+    printf "${#result}";;
+
+    # usage example:
+    # char_count=$(f_utils_strings "count_chars" "hello" "l");  
+    # - this will assign '2' to 'char_count'.
+
+# ---------------------------------------------------------------
+	"del_all_occurrence")
+    result="${param1//$param2}"
+    printf "${result}";;
+
+  # usage example:
+  # result=$(f_utils_strings "del_all_occurrence" "1.2.3" ".");
+  # - result --> "123"
+
+esac;
+};

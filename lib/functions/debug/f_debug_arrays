@@ -1,0 +1,80 @@
+function f_debug_arrays(){
+
+# About:   
+# - This function displays arrays as key value pairs.
+# - It allows the developeer to print out the value any variable at any point of the project flow.
+# - The choice is limited to the four arrays that contain all variables.
+#     - 'all'       is the array 'A_variables_all'       that contains all variables.
+#     - 'empty'     is the array 'A_variables_all_empty' that only contains empty variables.
+#     - 'framework' is the array 'A_framework_vars'      that only contains framework variables.
+#     - 'project'   is the array 'A_project_vars'        that only contains project variables.
+
+# In addition, a second parameter can be passsed to filter what is displayed to screen.
+
+# Usage:
+# f_debug_arrays "all" 
+# - This will display all variables at the point the function is called.
+# f_debug_arrays "all" "vj_" 
+# - This will display all variables defined in json files.
+# f_debug_arrays "all" "vp_" 
+# - This will display all project variables but not those defined in json.
+# f_debug_arrays "project"
+# - This will display all project variables including those defined in json.
+# f_debug_arrays "project" "vj_help"
+# - This will display all project variables defined in the help.json.
+
+# ---------------------------------------------------------------
+# [1] Declare variables with local scope to this function only.
+
+local array_to_display;
+local k;
+
+# ---------------------------------------------------------------
+# [2] Assign passed parameter(s).
+
+array_to_display="${1}";
+filter="${2}";
+
+#if [[ "${filter}" == "" ]]; then filter="false"; fi;
+
+# ---------------------------------------------------------------
+# [3] Match the array to declare from the case statement. 
+
+declare -n dynamic_array_name="${array_to_display}";
+
+case "${array_to_display}" in
+
+# ---------------------------------------------------------------
+  "all")
+    declare -n dynamic_array_name="A_variables_all";;
+
+# ---------------------------------------------------------------
+  "empty")
+    declare -n dynamic_array_name="A_variables_all_empty";;
+
+# ---------------------------------------------------------------
+  "framework")
+    declare -n dynamic_array_name="A_framework_vars";;
+
+# ---------------------------------------------------------------
+  "project")
+    declare -n dynamic_array_name="A_project_vars";;
+
+esac;
+
+if [[ "${filter}" == "false" ]];then 
+  for k in "${!dynamic_array_name[@]}"
+  do
+      printf "%b\n" "${cy}Key:     ${blB}${k}${rs}";
+      printf "%b\n" "${yl}value:   ${blB}${dynamic_array_name[$k]}${rs}";
+  done;
+else
+  for k in "${!dynamic_array_name[@]}"
+  do
+    if [[ "${k}" == *"${filter}"* ]];then 
+      printf "%b\n" "${cy}Key:     ${blB}${k}${rs}";
+      printf "%b\n" "${yl}value:   ${blB}${dynamic_array_name[$k]}${rs}";
+    fi;
+  done;
+fi;
+};

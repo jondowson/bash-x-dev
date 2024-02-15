@@ -1,0 +1,41 @@
+function f_utils_strings_printf(){
+
+# About:            
+# - Bash string actions using the printf utility.
+
+# Usage:
+# - see examples below for each case statement.
+
+# ---------------------------------------------------------------
+# [1] Declare local variables with scope for this function only.
+
+local action;
+local string; 
+local substring; 
+local result; 
+
+# ---------------------------------------------------------------
+# [2] Assign the passed parameters.
+
+action="${1}";
+string="${2}"; 
+substring="${3}";    
+result="";
+
+# ---------------------------------------------------------------
+# [3] Select the required action from the case statement. 
+
+case "${action}" in
+
+# ---------------------------------------------------------------
+	"escape_string")
+		result="$(printf "%q" "${string}")";;
+
+# usage example:
+# result=$(f_utils_strings_printf "escape_string" "grep -6 | grep -v 6->");
+# - result --> "grep\ -6\ \|\ grep\ -v\ 6-\>"
+# - Remove escape backslashes from a string.
+
+esac;
+printf "%s" "${result}";
+};

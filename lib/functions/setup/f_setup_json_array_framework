@@ -1,0 +1,61 @@
+function f_setup_json_array_framework(){
+
+cat << EOF > ${vf_path_framework_home}json/framework.json
+{
+    "framework":{
+        "description":          "A lightweight SRE framework",
+        "name":                 "bash-x",
+        "repo":                 "git.swisscom.com/projects/CSL/repos/bash-x-dev/",
+        "bashxpath":            "../bash-x/",
+        "projectspath":         "../bash-x-projects/",
+        "version":              "1.0.0",
+        "flags":{
+            "authapproach":     "local_user_key",
+            "clear":            "true",
+            "colordisplay":     "true",
+            "fastfail":         "false",
+            "help":             "false",
+            "inspect":          "json",
+            "limit":            "false",
+            "minproject":       "false",
+            "project":          "false",
+            "remotestart":      "false",
+            "setup":            "false",
+            "skeleton":         "false",
+            "skipstages":       "false",
+            "sshinterface":     "default",
+            "sshkeypath":       "~/.ssh/id_rsa",
+            "sshpasspath":      "~/.pass",
+            "sshtargetpath":    "/home/devops/",
+            "sshuser":          "devops",
+            "tidyup":           "false"
+        },
+        "dependencies":{
+            "os":{
+                "all":{
+                    "bash":     ">4.0.0",
+                    "jq":       "^1.5",
+                    "ssh":      ">8.0"
+                },
+                "mac":{
+                    "gsed":     "^4.8",
+                    "ggrep":    "^3.0",
+                    "gawk":     "^5.0"
+                },
+                "debian":{
+                    "sed":      "latest",
+                    "grep":     "^3.0",
+                    "awk":      ">4.0"
+                },
+                "rhel":{
+                    "sed":      "^4.8",
+                    "grep":     "^3.0",
+                    "awk":      "^4.0"
+                }
+            }
+        }
+    }
+}
+
+EOF
+};

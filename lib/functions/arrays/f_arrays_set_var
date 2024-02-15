@@ -1,0 +1,74 @@
+function f_arrays_set_var(){
+
+# About:   
+# - To set a variable is to add it to an array that has global scope and as well declare it as a bash variable.
+# - This function adds a key and its value to the 'A_framework_vars' array.
+# - It then declares the key as a bash variable with the value.
+
+# Usage:
+# f_arrays_set_var "fp_new_variable" "1234";
+# - Pass two parameters, the name of the variable and the value to assign.
+
+# ---------------------------------------------------------------
+# [1] Declare variables with local scope to this function only.
+
+local key;
+local value;
+
+# ---------------------------------------------------------------
+# [2] Assign passed parameters.
+
+key="${1}";
+value="${2}";
+
+# ---------------------------------------------------------------
+# [3] Insert the passed parameters into both these arrays:
+# - 'A_variables_all'           - the array of all variables.
+# - 'A_variables_all_empty'     - the array of all empty variables.
+
+A_variables_all["${key}"]="${value}";
+if [[ "${value}" == "" ]];then A_variables_all_empty["${key}"]="${value}"; fi;
+
+# Associative arrays are unordered, so add to a regular array in case an ordered list is later required.
+a_variables_all_ordered+=( "${currentKey}" );
+
+# ---------------------------------------------------------------
+# [3] Depending on the suffix add to these variables:
+
+# - 'A_framework_vars'          - the array of all framework variables.
+# - 'A_framework_json'          - the array of all variables declared in 'framework.json' (start with vj_framework + never change).
+# - 'A_project_vars'            - the array of all project variables.
+# - 'A_project_json'            - the array of all variables declared in 'project.json' (start with vj_project + never change).
+# - 'A_variables_inventory'     - the array of all variables from an inventory file (may ormay not be used by a project).
+
+case "${key}" in
+
+    # ---------------------------------------------------------------
+    "vf_"*)
+        A_framework_vars["${key}"]="${value}";;
+
+    # ---------------------------------------------------------------
+    "vp_"*)
+        A_project_vars["${key}"]="${value}";;
+
+    # ---------------------------------------------------------------
+    "vj_inventory_"*)
+        A_variables_inventory["${key}"]="${value}";;
+
+    # ---------------------------------------------------------------
+    "vj_framework_"*)
+        A_framework_json["${key}"]="${value}";;
+
+            # ---------------------------------------------------------------
+    "vj_project_"*)
+        A_project_json["${key}"]="${value}";;
+esac;
+
+
+# ---------------------------------------------------------------
+# [4] Declare the key value pair as bash variable.
+
+# Declare the variable and its value - now available globally.
+key=$(f_utils_strings "bashvar_swap" "${key}");
+printf -v "${key}" "${value}";
+};

@@ -1,0 +1,153 @@
+function f_dependency_step3(){
+
+# About:
+# - Check which version of a dependency is installed and if it meets the requirements.
+
+# Usage:
+# f_dependency_version_checker ${dependency} ${version} ${source};
+# - Pass the package to check, its semantic version requirement and either framework or project. 
+
+# ---------------------------------------------------------------
+# [1] Declare local variables with scope for this function only.
+
+local dependency;
+local json_value;
+local source;
+
+local json_value_clean;
+local VERSION_PARTS;
+local major_json;
+local minor_json;
+local patch_json;
+
+local get_version;
+local VERSION_PARTS_ACTUAL;
+local major_actual;
+local minor_actual;
+local patch_actual;
+local actual_value;
+
+# ---------------------------------------------------------------
+# [2] Get the dependency and the version requirement as parameter.
+
+dependency="${1}";
+json_value="${2}";
+source="${3}";
+project_subcategory="${4}";
+
+# ---------------------------------------------------------------
+# [3] Clean the version to get only the number form.
+
+# Remove any semantic versioning chars from the beginning of the string.
+json_value_clean="$(echo "${json_value}" | ${vf_cmd_sed} 's/^[^0-9]*//')";
+# Set IFS to '.' for splitting the version string.
+OLD_IFS=$IFS;
+IFS='.' read -ra VERSION_PARTS <<< "${json_value_clean}";
+major_json="${VERSION_PARTS[0]}";
+minor_json="${VERSION_PARTS[1]}";
+patch_json="${VERSION_PARTS[2]}";
+IFS=$OLD_IFS;
+
+# ---------------------------------------------------------------
+# [4] Get the version installed.
+get_version="";
+
+# Ping is implemented differently across OS systems and does not usually give a version.
+# If command works allocate version of 0.0.0 to denote unknown version.
+if [[ "${dependency}" == "ping" ]];then
+    ping 127.0.0.1 -t 1 > /dev/null 2>&1;
+    if [[ $? == 0 ]];then
+        get_version="0.0.0";
+    else
+        get_version="";
+    fi;
+elif [[ "${dependency}" == "awk" ]];then
+    awk --version > /dev/null 2>&1;
+    if [[ $? == 0 ]];then
+        get_version="0.0.0";
+    else
+        get_version="";
+    fi;
+else
+    get_version=$(${dependency} --version 2>&1);
+    if [[ $? != 0 ]];then
+        get_version=$(${dependency} -version 2>&1);
+        if [[ $? != 0 ]];then
+            get_version=$(${dependency} -v 2>&1);
+            if [[ $? != 0 ]];then
+                get_version=$("${dependency}" -V 2>&1);
+                if [[ $? != 0 ]];then
+                    get_version=$(${dependency} -W version 2>&1);
+                    # Do dpkg only if available --> not on macOS
+                    if [ "${?}" != 0 ] && [ "${vf_os_identify}" != "Mac" ];then
+                        which dpkg > /dev/null 2>&1;
+                        if [[ "${?}" == 0 ]];then
+                            get_version=$(dpkg -s ${dependency} 2>&1);
+                            if [[ $? != 0 ]];then
+                                which apt > /dev/null 2>&1;
+                                if [[ "${?}" == 0 ]];then
+                                    get_version=$(apt-cache policy ${dependency} 2>&1);
+                                else
+                                    get_version="";
+                                fi;
+                            fi;
+                        fi;
+                    else
+                        which brew > /dev/null 2>&1;
+                        if [[ ${?} == 0 ]];then
+                            brew list | grep -iw ${dependency};
+                            if [[ "${?}" == 0 ]];then
+                                get_version=$(brew info ${dependency});
+                            else
+                                # Seems java at least is not always added to brew list.
+                                brew info ${dependency} > /dev/null 2>&1;
+                                if [[ "${?}" == 0 ]];then
+                                    get_version=$(brew info ${dependency});
+                                else
+                                    get_version="";
+                                fi;
+                            fi;
+                        fi;
+                    fi;
+                fi;
+            fi;
+        fi;
+    fi;
+fi;
+
+if [[ "${get_version}" == "" ]];then
+    if [[ "${source}" == "framework" ]];then
+        A_dependency_checked["${dependency}"]="false";
+        A_dependency_installed["${dependency}"]="none";
+    elif [[ "${source}" == "project" ]];then
+        A_dependency_checked_project["${dependency}"]="false";
+        A_dependency_installed_project["${dependency}"]="none";
+        if [[ "${project_subcategory}" == *"project_dependencies_make"* ]];then
+            A_dependency_checked_project_make["${dependency}"]="false";
+            A_dependency_installed_project_make["${dependency}"]="none";
+        elif [[ "${project_subcategory}" == *"project_dependencies_execute"* ]];then
+            A_dependency_checked_project_execute["${dependency}"]="false";
+            A_dependency_installed_project_execute["${dependency}"]="none";   
+        fi;
+    fi;
+else
+
+# ---------------------------------------------------------------
+# [5] Extract the version from the text and split into its constituent parts.
+
+    # The version without clustter - so just 1.2.3
+    actual_value=$(f_dependency_actual_cleaner "${get_version}" "normal");
+    # Set IFS to '.' for splitting the version string.
+    OLD_IFS=$IFS;
+    IFS='.' read -ra VERSION_PARTS_ACTUAL <<< "${actual_value}";
+    major_actual="${VERSION_PARTS_ACTUAL[0]}";
+    minor_actual="${VERSION_PARTS_ACTUAL[1]}";
+    patch_actual="${VERSION_PARTS_ACTUAL[2]}";
+    IFS=$OLD_IFS;
+# ---------------------------------------------------------------
+# [6] Check if the version installed meets the dependency requirement.
+f_dependency_step4  "${source}" "${dependency}" "${project_subcategory}" "${json_value}" "${actual_value}" \
+                    "${major_json}" "${minor_json}" "${patch_json}" \
+                    "${major_actual}" "${minor_actual}" "${patch_actual}";
+fi;
+};

@@ -1,0 +1,66 @@
+{
+  "framework": {
+    "description": "A lightweight SRE framework",
+    "name": "bash-x-dev",
+    "repo": "git.swisscom.com/projects/CSL/repos/bash-x-dev/",
+    "bashxpath": "../bash-x/",
+    "projectspath": "../bash-x-projects/",
+    "version": "1.0.0",
+    "flags": {
+      "ssh": {
+        "comment":        "no_auth, user_pass, user_key, user_pass_key, cicd_user_pass",
+        "approach":       "user_key",
+        "interface":      "default",
+        "keypath":        "~/.ssh/id_rsa",
+        "passpath":       "~/.pass",
+        "targetpath":     "/home/devops/",
+        "user":           "devops"
+      },
+      "behaviour": {
+        "fastfail":       "false",
+        "limit":          "false",
+        "remotecompute":  "false",
+        "skipstages":     "false",
+        "tidyup":         "false",
+        "trace":          "false"
+      },
+      "display":{
+        "color":          "true"
+      },
+      "paths":{
+        "bashx":          "../bash-x/",
+        "projects":       "../bash-x-projects/"
+      },
+      "tools":{
+        "inspect":        "json",
+        "minframework":   "false",
+        "minproject":     "false",
+        "skeleton":       "false"
+      }
+  },
+    "dependencies": {
+      "os": {
+        "all": {
+          "bash": ">4.3.0",
+          "jq": "^1.5",
+          "ssh": ">8.0"
+        },
+        "mac": {
+          "gsed": "^4.8",
+          "ggrep": "^3.0",
+          "gawk": "^5.0"
+        },
+        "debian": {
+          "sed": "latest",
+          "grep": "^3.0",
+          "awk": ">4.0"
+        },
+        "rhel": {
+          "sed": "^4.8",
+          "grep": "^3.0",
+          "awk": "^4.0"
+        }
+      }
+    }
+  }
+}

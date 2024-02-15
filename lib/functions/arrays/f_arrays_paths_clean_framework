@@ -1,0 +1,43 @@
+function f_arrays_paths_clean_framework(){
+
+# ---------------------------------------------------------------
+# [1] Loop through the array of all framework variables.
+
+for key in ${!A_framework_vars[@]}
+do
+  
+  result="";
+  new_key="";
+  new_value="";
+  this_value="";
+
+
+  #new_key=$(echo $key | ${vf_cmd_sed} 's|\(.*\)_.*|\1|');
+  
+  # Get the current default value. 
+  new_value="${A_framework_vars[${key}]}";
+
+# ---------------------------------------------------------------
+# [2] Correct forward slashes in paths if applicable.
+
+  # Fix the path.
+  this_value=$(f_utils_strings_bpe "paths_single_slash" "${new_value}");
+
+  # Path contains a HOME shortcut.
+  if [[ "${this_value}" == "~/"* ]];then
+
+    # Strip the tilde and forward slash and swap in the path to the user home.
+    result=$(f_utils_strings_bpe "del_fromleft_upto_including" "${this_value}" "~/");
+    
+    # Update the variable in the array and declare it again.
+    f_arrays_set_var "${key}" "${HOME}/${result}";
+    
+  else
+
+    # Update the variable in the array and declare it again.
+    f_arrays_set_var "${key}" "${this_value}";
+  fi;
+
+done;
+
+};

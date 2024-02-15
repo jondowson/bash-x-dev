@@ -1,0 +1,93 @@
+function f_multipids_arrays(){
+
+# About:
+# - This function is called in the stage loop for concurrent stages.
+# - For the current stage in the loop, this function calls the five required multipid functions that manage the stage functions as subprocesses. 
+# - Each project can create beskpoke versions of any multipid function by appending '_SX' (where X is stage number).
+# - The run order of preference:
+# - First run a bespoke stage version, then try to run a bespoke project version and finally run the framework version.
+# - So run order is:
+#   - [0] Use 'fp_multipids_create_SX',  else 'fp_multipids_create',  else 'f_multipids_create' 
+#   - [1] Use 'fp_multipids_displa_SX',  else 'fp_multipids_display', else 'f_multipids_display'
+#   - [2] Use 'fp_multipids_wait_SX',    else 'fp_multipids_wait',    else 'f_multipids_wait'   
+#   - [3] Use 'fp_multipids_success_SX', else 'fp_multipids_success', else 'f_multipids_success'
+#   - [4] Use 'fp_multipids_fail_SX',    else 'fp_multipids_fail',    else 'f_multipids_fail'   
+
+# Usage:
+# f_multipids_arrays;
+# - No parameters.
+# - The array 'a_multipds_runorder' can be overidden by re-assigning its values in 'fp_project_custom_runorder'.
+# - These changes will then be applied and be stage specific.
+# - Below is an example where we clear the array and just run one function.
+# - a_multipds_runorder[0]="f_multipids_wait";
+# - a_multipds_runorder[1]="";
+# - a_multipds_runorder[2]="";
+# - a_multipds_runorder[3]="";
+# - a_multipds_runorder[4]="";
+
+# ---------------------------------------------------------------
+# [1] Create the stage functions as sub processes (pids).
+
+suffix="fp_multipids_create";
+index="0";
+if declare -F "${suffix}_S${vp_stage_number}"  > /dev/null; then
+    a_multipds_runorder[${index}]="${suffix}_S${vp_stage_number}";
+elif declare -F "${suffix}"  > /dev/null; then
+    a_multipds_runorder[${index}]="${suffix}";
+else
+    a_multipds_runorder[${index}]="f_multipids_create";  
+fi;
+
+# ---------------------------------------------------------------
+# [2] Display the pid details for stage.
+
+suffix="fp_multipids_display_details";
+index="1";
+if declare -F "${suffix}_S${vp_stage_number}"  > /dev/null; then
+    a_multipds_runorder[${index}]="${suffix}_S${vp_stage_number}";
+elif declare -F "${suffix}"  > /dev/null; then
+    a_multipds_runorder[${index}]="${suffix}";
+else
+    a_multipds_runorder[${index}]="f_multipids_display_details";  
+fi;
+
+# ---------------------------------------------------------------
+# [3] Wait for pids to terminate and add to either success or fail arrays.
+
+suffix="fp_multipids_wait";
+index="2";
+if declare -F "${suffix}_S${vp_stage_number}"  > /dev/null; then
+    a_multipds_runorder[${index}]="${suffix}_S${vp_stage_number}";
+elif declare -F "${suffix}"  > /dev/null; then
+    a_multipds_runorder[${index}]="${suffix}";
+else
+    a_multipds_runorder[${index}]="f_multipids_wait";  
+fi;
+
+# ---------------------------------------------------------------
+# [4] Display the success array for all completed pids.
+
+suffix="fp_multipids_display_success";
+index="3";
+if declare -F "${suffix}_S${vp_stage_number}"  > /dev/null; then
+    a_multipds_runorder[${index}]="${suffix}_S${vp_stage_number}";
+elif declare -F "${suffix}"  > /dev/null; then
+    a_multipds_runorder[${index}]="${suffix}";
+else
+    a_multipds_runorder[${index}]="f_multipids_display_success";  
+fi;
+
+
+# ---------------------------------------------------------------
+# [5] Display the fail array for all unsuccessful pids.
+
+suffix="fp_multipids_display_fail";
+index="4";
+if declare -F "${suffix}_S${vp_stage_number}"  > /dev/null; then
+    a_multipds_runorder[${index}]="${suffix}_S${vp_stage_number}";
+elif declare -F "${suffix}"  > /dev/null; then
+    a_multipds_runorder[${index}]="${suffix}";
+else
+    a_multipds_runorder[${index}]="f_multipids_display_fail";  
+fi;
+};

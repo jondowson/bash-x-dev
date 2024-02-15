@@ -1,0 +1,49 @@
+function f_check_project_json_exist(){
+
+# About:
+# - Check required project related json files exist.
+# - Exit if any one of them is missing.
+
+# Usage:
+# f_check_project_json_exist;
+
+# ---------------------------------------------------------------
+# [1] Declare local function scope variables.
+
+local err_flag;
+err_flag="";
+
+# ---------------------------------------------------------------
+# [2] Check json files exist in correct folder. 
+# - Failure will result in an exit.
+# - if a file is missing this will use the framework error mechanism to exit.
+# - the project error mechganism is available after these checks have passed.
+
+# arrays.json 
+if [ ! -f "${vp_project_rootpath}json/project/arrays.json" ];then 
+    f_arrays_set_var "vf_dynamic_error_msg" "${vp_project_rootpath}json/project/arrays.json"; 
+    err_flag="true"; 
+fi; 
+
+# errors.json 
+if [ ! -f "${vp_project_rootpath}json/project/errors.json" ];then 
+    f_arrays_set_var "vf_dynamic_error_msg" "${vp_project_rootpath}json/project/errors.json"; 
+    err_flag="true"; 
+fi;
+
+# help.json
+if [ ! -f "${vp_project_rootpath}json/project/help.json" ];then
+    f_arrays_set_var "vf_dynamic_error_msg" "${vp_project_rootpath}json/project/help.json"; 
+    err_flag="true";
+fi; 
+
+# Handle any errors.
+if [[ "${err_flag}" == "true" ]];then
+  
+  # Always exit on this type of failure.
+  f_arrays_set_var "vf_framework_flags_behaviour_fastfail" "true";
+  # The 2nd param maps to the framework error array.
+  f_errors_exitmessages_framework "${FUNCNAME[0]}: $((LINENO))" "project_json";
+  
+fi;
+};

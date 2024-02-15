@@ -1,0 +1,86 @@
+function f_multipids_create(){
+
+# ---------------------------------------------------------------
+# [1] Declare local scope variables. 
+# - Note that local variables can be used outside of the function by adding them to a global array.
+
+local loop_source_hostname;
+local loop_source_domain;
+local loop_source_interface;
+local loop_source_pubIp;
+local loop_source_gateway;
+
+# ---------------------------------------------------------------
+# [2] Test the project array is not empty.
+
+if [[ "${#A_tests_to_all[@]}" -eq "0" ]];then 
+    f_errors_exitmessages "${FUNCNAME[0]}: $((LINENO))" "2" "";  
+fi;
+
+# ---------------------------------------------------------------
+# [3] Create a de-duplicated list of all source servers.
+
+# Loop through the array of all tests.
+# Create a new de-duplicated array that will be used next to loop through.
+# This new array has only a key and no value that will be overwritten many times.
+# This unique list of source servers will includes the ssh interface used to connect to each source server.
+# The ssh interface used to connect to each source server is specified in the project.json. 
+# The source servers are taken from the project array 'A_tests_to_all' and not directly form the 'inventory.json'. 
+# This is because it is possible not all source servers in the 'inventory.json' have tests defined for them.
+
+for i in "${!A_tests_to_all[@]}"
+do
+
+    # Standard framework 'inventory.json' elements. 
+    source_hostname="$(echo         ${A_tests_to_all[$i]} | cut -d ',' -f1)";
+    source_domain="$(echo           ${A_tests_to_all[$i]} | cut -d ',' -f2)";
+    source_pubIp="$(echo            ${A_tests_to_all[$i]} | cut -d ',' -f3)";
+    source_interface="$(echo        ${A_tests_to_all[$i]} | cut -d ',' -f4)";
+    source_gateway="$(echo          ${A_tests_to_all[$i]} | cut -d ',' -f5)";
+    source_parent="$(echo           ${A_tests_to_all[$i]} | cut -d ',' -f6)";
+
+    # Create strings to use with the inventory array.
+    # The parent of the 'source_hostname' is, for example, 'stag1' from 'vj_inventory_servers_stag1_tcsmsc-stag11'.
+    ip_string="vj_inventory_servers_${source_parent}_service_${vf_framework_flags_ssh_interface}_${source_hostname}";
+    do_string="vj_inventory_servers_${source_parent}_service_${vf_framework_flags_ssh_interface}_domain"; 
+    gw_string="vj_inventory_servers_${source_parent}_service_${vf_framework_flags_ssh_interface}_gateway";  
+    
+    # Grab the interface ip, domain and gateway for the interface used to connect to each source server.
+    loop_source_pubIp="${A_variables_inventory[$ip_string]}";
+    loop_source_domain="${A_variables_inventory[$do_string]}";
+    loop_source_gateway="${A_variables_inventory[$gw_string]}";
+
+    # Add to the loop array the source server info. 
+    # This will be overwritten many times in this loop.
+    # The resultant 'A_loop_array' will be a de-duplicated list of all source servers with the specified interface to connect from.
+    # Note the empty value used for all entries in this array.
+    A_loop_array["${source_hostname},${loop_source_domain},${vf_framework_flags_ssh_interface},${loop_source_pubIp}","${loop_source_gateway}"]="";
+
+done;
+
+# ---------------------------------------------------------------
+# [4] Loop through the array of all source servers.
+
+# For each source server create a subprocess with its own log file.
+# The addtional info is used to populate the 'details' string associated with each subprocess.
+
+# Loop through the list of all source servers.
+for i in "${!A_loop_array[@]}"
+do
+    # Grab from the comma delimited key.
+    loop_source_hostname="$(echo ${i}  | cut -d ',' -f1)";
+    loop_source_domain="$(echo ${i}    | cut -d ',' -f2)";
+    loop_source_interface="$(echo ${i} | cut -d ',' -f3)";
+    loop_source_pubIp="$(echo ${i}     | cut -d ',' -f4)";
+    loop_source_gateway="$(echo ${i}   | cut -d ',' -f5)";
+
+    # For each source server run the stage functions as a subprocess and pipe output to a local 'source_hostname' specific log file.
+    f_stages_functions >> "${vp_path_folder_timestamp_tests_logs_sublocal}${loop_source_hostname}.log" 2>&1 &
+    pid=${!};
+    details="${loop_source_hostname},${loop_source_domain},${loop_source_interface},${loop_source_pubIp},${vp_stage_number}";
+    
+    # This array will be used by all the other multipid functions.
+    A_stage_pid_details["${pid}"]="${details}";
+
+done;
+};

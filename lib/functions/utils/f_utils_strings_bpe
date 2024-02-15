@@ -1,0 +1,180 @@
+function f_utils_strings_bpe(){
+
+# About:            
+# - Bash parameter expansion operations on strings.
+
+# Usage:
+# - see examples below for each case statement.
+
+# ---------------------------------------------------------------
+# [1] Declare local variables with scope for this function only.
+
+local action;
+local string; 
+local substring; 
+local result; 
+
+# ---------------------------------------------------------------
+# [2] Assign the passed parameters.
+
+action="${1}";
+string="${2}"; 
+substring="${3}";    
+result="";
+
+# ---------------------------------------------------------------
+# [3] Select the required action from the case statement. 
+
+case "${action}" in
+
+# ---------------------------------------------------------------
+	"unescape_string")
+		result="${string//\\/}";;
+
+# usage example:
+# result=$(f_utils_strings_bpe "unescape_string" "grep\ -6\ \|\ grep\ -v\ 6-\>");
+# - result --> "grep -6 | grep -v 6->"
+# - Remove escape backslashes from a string.
+
+# ---------------------------------------------------------------
+	"del_fromleft_upto_including")
+		result="${string##*${substring}}";;
+
+# usage example:
+# result=$(f_utils_strings_bpe "del_fromleft_upto_including" "helloworld" "o");
+# - result --> "rld"
+# - Remove from left upto and including the furthest match.
+
+# ---------------------------------------------------------------
+	"del_fromleft_upto_including_first")
+		result="${string#*${substring}}";;
+
+# usage example:
+# result=$(f_utils_strings_bpe "del_fromleft_upto_including_first" "helloworld" "o"); 
+# - result --> "world"
+# - Remove from left upto and including the first match.
+
+# ---------------------------------------------------------------
+	"del_fromleft_upto_including_first_or")
+		# for on the string length and execute the function on the order of the char present in the string
+		length_str=${#string};
+		length_sub=${#substring};
+		lastIndex=$(( $length_sub - 1 ));
+		result="";
+		for i in `seq 0 $lastIndex`;do
+			# get nth char in string
+			char=${substring:$i:1};
+			result="${string#*${char}}";
+			length_res=${#result};
+			if [[ $length_res -ne $length_str ]];then
+				break;
+			fi;
+		done;;
+
+# usage example:
+# result=$(f_utils_strings_bpe "del_fromleft_upto_including_first_or" "helloworld" "xo"); 
+# - result --> "world"
+# - Remove from left upto and including the first match. Tries with each char in the substring individually and stop when one of the char in substring is found
+
+# ---------------------------------------------------------------
+	"keep_fromleft_upto_excluding")
+		result="${string%${substring}*}";;
+
+# usage example:
+# result=$(f_utils_strings_bpe "keep_fromleft_upto_excluding" "hellowworld" "o");
+# - result --> "helloww"
+# - keep from left upto and excluding the furthest match. 
+
+# ---------------------------------------------------------------
+	"keep_fromleft_upto_excluding_first")
+		result="${string%%${substring}*}";;
+
+# usage example:
+# result=$(f_utils_strings_bpe "keep_fromleft_upto_excluding_first" "hellowworld" "o");
+# - result --> "hell"
+# - keep from left upto and excluding the first match. 
+
+# ---------------------------------------------------------------
+	"keep_fromleft_upto_excluding_first_or")
+		# for on the string length and execute the function on the order of the char present in the string
+		length_str=${#string};
+		length_sub=${#substring};
+		lastIndex=$(( $length_sub - 1 ))
+		result="";
+		for i in `seq 0 $lastIndex`;do
+			# get nth char in string
+			char=${substring:$i:1};
+			result="${string%%${char}*}";
+			length_res=${#result};
+			if [[ $length_res -ne $length_str ]];then
+				break;
+			fi;
+		done;;
+		
+# usage example:
+# result=$(f_utils_strings_bpe "keep_fromleft_upto_excluding_first" "hellowworld" "xo");
+# - result --> "hell"
+# - keep from left upto and excluding the first match. Tries with each char in the substring individually and stop when one of the char in substring is found
+
+# ---------------------------------------------------------------
+	"paths_single_slash")
+		result=$(echo ${string//\}/\}/});
+		result=$(echo ${result//\/\//\/});
+		result=$(echo ${result//\/\//\/});;
+
+# usage example:
+# result=$(f_utils_strings_bpe "paths_single_slash" "/path////to/file.txt"); 
+# - result --> "/path/to/file.txt"
+# - this will replace multiple slashes with a single one if present in a path.
+
+# ---------------------------------------------------------------
+	"paths_end_slash")
+		[[ "${string}" != */ ]] && string="${string}/";
+		result="$(echo ${string%/}/)";;
+
+# usage example:
+# result=$(f_utils_strings_bpe "paths_end_slash" "/path/to/here"); 
+# - result --> "/path/to/here/"
+# - this will add a forward slash only if one does not already exist.
+
+# ---------------------------------------------------------------
+	"paths_end_no_slash")
+		[[ "${string}" != */ ]] && string="${string}/";
+		result="$(echo ${string%/})";;
+
+# usage example:
+# result=$(f_utils_strings_bpe "paths_end_no_slash" "/path/to/file.txt/"); 
+# - result --> "/path/to/file.txt"
+# - this will remove a forward slash from the end of the path only if one exists already.
+
+# ---------------------------------------------------------------
+	"get_numbers_from_string")
+		result=$(echo ${string//[!0-9]/});;
+
+# usage example:
+# result=$(f_utils_strings_bpe "get_numbers_from_string" "12eth-345"); 
+# - result --> "12345"
+# - this will grab just numbers from a string.
+
+
+# ---------------------------------------------------------------
+	"del_whitespace_leading")
+		result=$(echo ${string#"${string%%[![:space:]]*}"});;
+
+# usage example:
+# result=$(f_utils_strings_bpe "del_whitespace_leading" "  abc123"); 
+# - result --> "abc123"
+# - this delete the leading one or more white spaces.
+
+# ---------------------------------------------------------------
+	"del_whitespace_trailing")
+		result=$(echo ${string%"${string##*[![:space:]]}"});;
+
+# usage example:
+# result=$(f_utils_strings_bpe "del_whitespace_trailing" "abc123  "); 
+# - result --> "abc123"
+# - this delete the trailing one or more white spaces.
+
+esac;
+printf "%s" "${result}";
+};

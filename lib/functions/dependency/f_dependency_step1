@@ -1,0 +1,99 @@
+function f_dependency_step1(){
+    
+# About:
+# - Check that a dependency present in framework.json is installed on the machine and that it meets the version requirements.
+# - Check project dependencies are available.
+# - Harvest categorized metadata about the machine: 
+#   - CPU, RAM,processes.
+#   - Users, last time login.
+#   - Disk usage, mount points. 
+#   - Cronjobs.
+#   - Hardware, network info (interface card, subnet, ...).
+#   - Container info.
+
+# Usage:
+# bash-x --INSPECT from command line.
+# - f_dependency_step1 "true"  to show dependencies to screen.
+# - f_dependency_step1 "false" to generate the json string but not display to screen.
+
+# ---------------------------------------------------------------
+# [1] Declare local variables with scope for this function only.
+
+local run_mode="${1}";
+local debian_list;
+local length;
+local lastIndex;
+local count;
+
+# ---------------------------------------------------------------
+# [2] Check the dependency list depending on the OS.
+
+# Dependency checker code
+# - Call the function for _all.
+# - Look at the OS, if Mac, call for the mac array.
+# - For linux, do array of the debian dependencies and look if os in it.
+# - Otherwise take last array.
+
+f_dependency_step2 "vj_framework_dependencies_os_all";
+debian_list=("Ubuntu" "Alpine" "Debian" "MX Linux" "Linux Mint" "Deepin" "AntiX" "PureOS" "Kali Linux" "Parrot OS" "Devuan" "Knoppix" "AV Linux" "Pop!_OS" "Q4OS" "SparkyLinux" "Zorin OS" "Devuan" "KDE Neon");
+if [[ "${vf_os_identify}" == "Mac" ]]; then
+    f_dependency_step2 "vj_framework_dependencies_os_mac";
+elif [[ "${debian_list[*]}" =~ "${vf_os_identify}" ]]; then
+    f_dependency_step2 "vj_framework_dependencies_os_debian";
+else
+    f_dependency_step2 "vj_framework_dependencies_os_rhel";
+fi;
+
+# ---------------------------------------------------------------
+# [3] Get the metadata about the machine.
+
+f_arrays_set_var "vf_metadata_string" "";
+if [[ "${vf_os_identify}" != "Mac" ]]; then
+    f_dependency_metadata_linux;
+else
+    f_dependency_metadata_macos;
+fi;
+
+# Beautify the metadata into a nice json.
+f_dependency_metadata_json;
+
+# ---------------------------------------------------------------
+# [4] Check dependency for project if '--PROJECT' flag has been passed.
+
+if [[ "${vp_project_name}" != "" ]]; then
+    f_dependency_step2 "vj_project_dependencies";
+fi;
+
+# ---------------------------------------------------------------
+# [5] Construct the string that will be transformed in json thanks to jq.
+
+# Make the framework dependency json string.
+f_dependency_version_json "framework";
+
+# Make the project dependency json string for the 'make' section.
+if [[ "${vp_project_name}" != "" ]];then
+    vf_metadata_string+=',';
+    f_dependency_version_json "project_make";
+fi;
+# Make the project dependency json string for the 'execute' section.
+if [[ "${vp_project_name}" != "" ]];then
+    vf_metadata_string+=',';
+    f_dependency_version_json "project_execute";
+fi;
+# Add final closing parenthesis.
+vf_metadata_string+='}';
+
+# ---------------------------------------------------------------
+# [6] Make the json object look niuce for display. 
+
+# For using in projects, to get at any of the values in the json use jq like this ..
+# $ echo ${vf_metadata_string} | jq '.project_dependencies.execute.bash.meet_requirement'
+
+if [[ "${run_mode}" == "true" ]];then
+
+    # Two clears to ensure the output is pure json no display messages.
+    clear;
+    clear;
+    printf "%s\n" "${vf_metadata_string}" | ${jq} --indent 4 .;
+fi;
+};

@@ -1,0 +1,27 @@
+function f_dependency_actual_cleaner(){
+    
+local version;
+local mode;
+local regex;
+local version_number;
+
+version="${1}";
+mode="${2}";
+regex="";
+
+# Match only numbers
+if [[ $mode == "basic" ]];then
+    regex='[0-9]+(\.[0-9]+)*';
+# Match for dots and also - or _ in the numbers
+elif [[ $mode == "normal" ]];then
+    regex="v?([0-9]+(\.[0-9]+)+)";
+# Same as before but match also the x
+elif [[ $mode == "with_x" ]];then
+    regex='[0-9]+((\.|-|_)([0-9]|x)+)*';
+fi
+[[ $version =~ $regex ]];
+# Grab from the regex match array the result and drop the leading char if not a number.
+version_number="${BASH_REMATCH[0]}";
+version_number=$(echo "${version_number}" | ${vf_cmd_sed} 's/[^0-9.]//g');
+printf "%s" "${version_number}";
+};

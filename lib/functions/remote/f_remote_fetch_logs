@@ -1,0 +1,6 @@
+function f_remote_fetch_logs(){
+
+# [1] Fetch the logs from each source server.
+# - Fetch from remote server path to local path.
+f_ssh_scp_fetch "${vp_path_remote_logs}" "${vp_path_folder_timestamp_tests_logs_subremote}" "1";
+};

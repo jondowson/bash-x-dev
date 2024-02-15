@@ -1,0 +1,72 @@
+function f_display_help_project(){
+
+# About:
+# - This generic/required function creates a help page from the help.json file.
+# - It is called in the framework code when a project help flag is passed as an argument.
+
+# Usage:
+# f_display_help_project;
+
+# ---------------------------------------------------------------
+# [1] Display project help header.
+ 
+${spacer};
+printf "%b\n" "${cyB}Project help page.${rs}";
+${spacer};
+${equalsLine}; 
+printf "%b\n" "${yl}--> Project name:${cy}         ${vj_project_name}";
+printf "%b\n" "${yl}--> Description:${cy}          ${vp_project_description}";
+printf "%b\n" "${yl}--> Version:${cy}              ${vp_project_version}";
+printf "%b\n" "${yl}--> Repo:${cy}                 ${vp_project_repo}";
+printf "%b\n" "${yl}--> Project stages:${cy}       ${vp_project_rootpath}json/project/project.json";
+printf "%b\n" "${yl}--> Project flags:${cy}        ${vp_project_rootpath}json/project/help.json";
+printf "%b\n" "${yl}--> Project error codes:${cy}  ${vp_project_rootpath}json/project/errors.json";
+printf "%b\n" "${yl}--> Project arrays:${cy}       ${vp_project_rootpath}json/project/arrays.json${rs}";
+${spacer}; 
+printf '%s\t\t %s\t\t\t\t\t\t\t %s\n' "${cy}Flags (-short --long)${rs}" "${wh}About${rs}" "${yl}Defaults${rs} (as defined in the project's help.json)";
+${equalsLine};  
+
+# ---------------------------------------------------------------
+# [2] Loop through the help flags in the help.json array. 
+
+for i in ${!A_json_help[@]}
+do
+    string="vj_help_flags_";
+    charcount=$(f_utils_strings "count_chars" "${i}" "_");
+    stem=$(echo ${i} | ${vf_cmd_sed} 's/_[^_]*$//');
+
+    if [[ "${i}" == *"${string}"* ]] && [[ "${charcount}" -eq 4 ]] && [[ "${done_array[*]}" != *"${stem}"* ]];then 
+        
+        longflag="$(echo ${i} | cut -f 4 -d_)";
+        shortflag="${A_json_help[${stem}_shortflag]}";
+        about="${A_json_help[${stem}_about]}";
+        default="${A_json_help[${stem}_default]}";
+        printf '%s\t %-35s\t %-50s\t %s\n' "${cy}-${shortflag}" "--${longflag}${rs}" "${about}" "${yl}${default}${rs}"; 
+        done_array+=( "${stem}" );
+    fi;
+    
+done;
+
+# ---------------------------------------------------------------
+# [3] Loop through the example usage elements in the help.json array. 
+
+printf "\n%b\n" "${cyB}Example usage.${rs}";
+${equalsLine}; 
+flag_count="1";
+while :; 
+do
+    string="vj_help_usage_usage${flag_count}";
+    if [[ "${A_json_help[${string}_description]}" == "" ]];then break;fi;
+    description="${A_json_help[${string}_description]}";
+    example="${A_json_help[${string}_example]}";
+    printf "%s\n" "${yl}[${flag_count}] ${description}${rs}";
+    printf "%b\n\n" "$ ${example}";
+    flag_count=$((flag_count+1));
+done;
+
+# ---------------------------------------------------------------
+# [3] Display a list of all stages for this project. 
+
+f_stages_display_schedule;
+${spacer};
+};

@@ -1,0 +1,164 @@
+function f_utils_strings_sed(){
+
+# About:            
+# - sed operations on files.
+# - these operations are categorized by their name.
+#   - 'del_'      - remove matching char/string/line from a file.
+#   - 'get_'      - retrieve matching char/string/line from a file.
+#   - 'replace_'  - replace matching char/string/line in a file.
+#   - 'ins_'      - insert new char/string into a file.
+
+# Usage:
+# - see examples below for each case statement.
+# - examples are based on this file 'twinkle.txt'
+
+# line-number     File contents
+# 1               Twinkle, twinkle, little star,
+# 2               How I wonder what you are!
+# 3               Up above the world so high,
+# 4               Like a diamond in the sky.
+# 5               Twinkle, twinkle, little star,
+# 6               How I wonder what you are!
+# 7               ****
+# 8                When the blazing sun is gone,
+# 9               #     When he nothing shines upon,
+# 10              Then you show your little light,
+# 11              Twinkle, twinkle, all the night.
+# 12              Twinkle, twinklelittlestar,
+# 13              How I wonder what you are!
+
+# Parameters:
+# [1] action:           case statement to use.                          (required)
+# [2] file_path:        the path to the file.                           (required)
+# [3] string_search:    the string to search for in a file.             (required by all except 'del_colorcodes')
+# [4] string_replace:   the replacement string for the search_string.   (required by some)
+
+
+# ---------------------------------------------------------------
+# [1] Declare local variables with scope for this function only.
+
+local cmd;
+local action;
+local file_path;
+local string_search;
+local string_replace;
+
+# ---------------------------------------------------------------
+# [2] Assign the passed parameters.
+
+action="${1}";
+file_path="${2}"; 
+string_search="${3}";    
+string_replace="${4}";
+
+# ---------------------------------------------------------------
+# [3] Select the required action from the case statement. 
+
+case "${action}" in
+
+# ---------------------------------------------------------------
+  "del_colorcodes")
+    ${vf_cmd_sed} -i 's/\x1B[@A-Z\\\]^_]\|\x1B\[[0-9:;<=>?]*[-!"#$%&'"'"'()*+,.\/]*[][\\@A-Z^_`a-z{|}~]//g' "${file_path}" && ${vf_cmd_sed} -i 's/\x1b//g' "${file_path}";
+    result="$?";;
+# usage example:
+# - this will remove all ansi color codes from file.
+# - this is used to remove color codes from the log files as they make the log file harder to read.
+# f_utils_strings_sed "del_colorcodes" "/path/to/file.log"; 
+
+# ---------------------------------------------------------------
+  "del_line_by_empty")
+    ${vf_cmd_sed} -i '/^$/d' "${file_path}";
+    result="$?";;
+
+# usage example:
+# - this will remove all empty lines from the file.
+# f_utils_strings_sed "del_line_by_empty" "/path/to/twinkle.txt";
+
+# ---------------------------------------------------------------
+  "del_line_by_last")
+    ${vf_cmd_sed} -i '$ d' "${file_path}";
+    result="$?";;
+
+# usage example:
+# - this will remove the last line (empty or non-empty) from the file.
+# f_utils_strings_sed "del_line_by_last" "/path/to/twinkle.txt";  
+
+# ---------------------------------------------------------------
+  "del_line_by_linenumber")
+    ${vf_cmd_sed} -i "${string_search}d" "${file_path}";
+    result="$?";;
+
+# usage example:
+# - this will remove the 4th line. 'Like a diamond in the sky'. 
+# f_utils_strings_sed "del_line_by_linenumber" "4" "/path/to/twinkle.txt";
+
+# ---------------------------------------------------------------
+  "del_line_by_linenumber_range")
+    ${vf_cmd_sed} -i "${string_search},${string_replace}d" "${file_path}";
+    result="$?";;
+
+# usage example:
+# - this will remove the the 2nd to the 5th line, leaving the 6th line. The second line is now '****'. 
+# f_utils_strings_sed "del_line_by_linenumber_range" "/path/to/twinkle.txt" "2" "6"; 
+
+# ---------------------------------------------------------------
+  "del_line_by_starting_whitespace")
+    ${vf_cmd_sed} -i '/^ .*/d' "${file_path}";
+    result="$?";;
+
+# usage example:
+# - this will delete any lines that start with one or more leading whitespace.
+# - here line 8 will be deleted.
+# f_utils_strings_sed "del_line_by_starting_whitespace" "/path/to/twinkle.txt"; 
+
+# ---------------------------------------------------------------
+  "del_line_by_substring")
+    ${vf_cmd_sed} -i "/${string_search}/d" "${file_path}";
+    result="$?";;
+
+# usage example:
+# - this will remove all lines that contain 'twinkle' (lowercase).
+# - this will also remove lines that have twinkle as a substring. i.e. 'twinklelittlestar' will also match.
+# f_utils_strings_sed "del_line_by_substring" "/path/to/twinkle.txt" "twinkle";  
+
+# ---------------------------------------------------------------
+  "del_linecontent_hash_whitespace")
+    ${vf_cmd_sed} -i "/${string_search}/s/^#\s*//" "${file_path}";
+    result="$?";;
+
+# usage example:
+# - this will match every line that contains the search_string.
+# - if matching line starts with a hash, this and any whitespace after it will be removed.
+# - here this line will change from, to #     When he nothing shines upon,  --> When he nothing shines upon,
+# f_utils_strings_sed "del_linecontent_hash_whitespace" "/path/to/twinkle.txt" "he";  
+
+# ---------------------------------------------------------------
+  "del_linecontent_from_substring")
+    ${vf_cmd_sed} -i "s/${string_search}.*/${string_replace}/" "${file_path}";
+    result="$?";;
+
+# usage example:
+# - this will match on any line the 'search_string' and replace it and all chars after it with the 'string_replace'.
+# - here lines 1,5,10 11 will be changed to:  'Twinkle, winkle, ittle tar'.
+# - for line 10 and 11 this is perhaps undesirable? - if so, make the search term more specific.
+# f_utils_strings_sed "del_linecontent_from_substring" "/path/to/twinkle.txt" "twinkle," "winkle, ittle tar"; 
+
+# ---------------------------------------------------------------
+  "replace_by_substring")
+    ${vf_cmd_sed} -i "s,${string_search},${string_replace},g" "${file_path}";
+    result="$?";;
+
+# usage example:
+# - this will change every occurrence of an existing string with a replaced string (could be nothing).
+# - here every occurrence of twinkle will change to crinkle.
+# f_utils_strings_sed "replace_by_substring" "/path/to/twinkle.txt" "twinkle" "crinkle";. 
+
+
+esac;
+
+if [[ "${result}" != "0" ]]; then
+  f_arrays_set_var "vf_dynamic_error_msg" "cmd: ${vf_cmd_sed} -i, action: ${action}, filepath: ${file_path}, string_search: ${string_search}, string_replace: ${string_replace}";
+  f_errors_exitmessages "${FUNCNAME[0]}: $((LINENO))" "10";
+fi;
+
+};

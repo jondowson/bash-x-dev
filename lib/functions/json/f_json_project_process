@@ -1,0 +1,79 @@
+function f_json_project_process(){
+
+# About:
+# - Check validity of the required project json files and if good process each one.
+
+# Usage:
+# f_json_project_process;
+
+# ---------------------------------------------------------------
+# [1] Declare local function scope variables.
+
+local project_json_folder;
+local json_file;
+
+project_json_folder="${vp_project_rootpath}json/project/";
+
+
+# ---------------------------------------------------------------
+# [2] Check vaidity of json before processing it. 
+
+# -----------------------------
+# arrays.json 
+# - no need to declare variables as we only require the array. 
+# - omit 'vj_' prefix for arrays.
+
+json_file="${project_json_folder}arrays.json";
+printf "%b\n" "--> [1/4]: ${rs}Processing ${json_file}";
+if [ $(cat "${json_file}" | ${jq} empty > /dev/null 2>&1; echo $?) -ne 0 ]; then
+    echo "Bad json in: ${json_file}!"
+    exit 1;
+else
+    f_json_recurse "$(cat ${json_file})" "";
+fi;
+
+# -----------------------------
+# project.json
+# - prepend 'vj_' before inserting in arrays.
+# - subsequent variables will all start with: 'vj_stages'
+
+json_file="${project_json_folder}project.json";
+printf "%b\n" "--> [2/4]: ${rs}Processing ${json_file}";
+if [ $(cat "${json_file}" | ${jq} empty > /dev/null 2>&1; echo $?) -ne 0 ]; then
+    echo "Bad json in: ${json_file}!"
+    exit 1;
+else
+    f_json_recurse "$(cat ${json_file})" "vj";
+    f_arrays_declare_vars "json_project";
+fi;
+
+# -----------------------------
+# help.json 
+# - prepend 'vj_' before inserting in arrays.
+# - subsequent variables will all start with: 'vj_help_'
+
+json_file="${project_json_folder}help.json";
+printf "%b\n" "--> [3/4]: ${rs}Processing ${json_file}";
+if [ $(cat "${json_file}" | ${jq} empty > /dev/null 2>&1; echo $?) -ne 0 ]; then
+    echo "Bad json in: ${json_file}!"
+    exit 1;
+else
+    f_json_recurse "$(cat ${json_file})" "vj";
+    f_arrays_declare_vars "json_help";
+fi;
+
+# -----------------------------
+# errors.json 
+# - prepend 'vj_' before inserting in arrays.
+# - subsequent variables will all start with: 'vj_errors_'
+
+json_file="${project_json_folder}errors.json";
+printf "%b\n" "--> [4/4]: ${rs}Processing ${json_file}";
+if [ $(cat "${json_file}" | ${jq} empty > /dev/null 2>&1; echo $?) -ne 0 ]; then
+    echo "Bad json in: ${json_file}!"
+    exit 1;
+else
+    f_json_recurse "$(cat ${json_file})" "vj";
+    f_arrays_declare_vars "json_errors";
+fi;
+};

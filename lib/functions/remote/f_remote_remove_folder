@@ -1,0 +1,55 @@
+function f_remote_remove_folder(){
+
+local result;
+local remote_path;
+
+# ---------------------------------------------------------------
+# [1] Cautious checking for remote folder deletion.
+
+# Set the path for further operations.
+remote_path="${1}";
+
+# Check path is is not empty, else exit!
+if [[ "${remote_path}" == "" ]];then
+	f_arrays_set_var "vf_framework_flags_behaviour_fastfail" "true";
+	f_errors_exitmessages "${FUNCNAME[0]}: $((LINENO))" "1";
+fi;
+
+# ---------------------------------------------------------------
+# [2] Delete remote folder if it exists.
+
+# Check folder exists and if so check its permissions and then finally delete it.
+result=$(f_ssh_cmd "[[ -d ${remote_path} ]] && echo 0 || echo 1" "return_result");
+if [[ "${result}" == "0" ]];then
+
+    result=$(f_ssh_folder_actions "${remote_path}" "permission");
+    if [[ "${result}" == "0" ]];then
+        result=$(f_ssh_folder_actions "${remote_path}" "delete");
+        if [[ "${result}" != "0" ]];then
+
+            f_arrays_set_var "vp_dynamic_error_msg" "${remote_path}";
+            f_errors_exitmessages "${FUNCNAME[0]}: $((LINENO))" "${result}"; 
+            # If fastfail is not true, then this line will run.
+            # The sub-process will be exited with the error code.
+            # The exit code '3' means failed folder delete for this stage.
+            exit "3"; 
+        fi;
+    else
+        f_arrays_set_var "vp_dynamic_error_msg" "${remote_path}";
+        f_errors_exitmessages "${FUNCNAME[0]}: $((LINENO))" "${result}"; 
+        # If fastfail is not true, then this line will run.
+        # The sub-process will be exited with the error code.
+        # The exit code '2' means failed folder permission check for this stage.
+        exit "2"; 
+    fi;
+
+elif [[ "${result}" == "255" ]];then
+    f_arrays_set_var "vp_dynamic_error_msg" "${remote_path}";
+    f_errors_exitmessages "${FUNCNAME[0]}: $((LINENO))" "${result}"; 
+    # The exit code '1' means failed connectivity for this stage.
+    exit "1";
+else
+    # Message to sub process logs to inform of non-present folder (not an error).
+    echo "Folder path not present, skipping delete of: ${remote_path}";
+fi;
+};

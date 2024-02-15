@@ -1,0 +1,22 @@
+f_ssh_folder_actions(){
+
+local path="${1}";
+local action="${2}";
+
+# Ensure folder path ends with a slash.
+path=$(f_utils_strings_bpe "paths_end_slash" "${path}");
+
+case "${action}" in
+# ---------------------------------------------------------------
+		"delete")
+		result=$(f_ssh_cmd "[[ -d ${path} ]] && rm -rf ${path} && echo 0 || echo 1" "return_result");
+		;;
+# ---------------------------------------------------------------
+		"permission")
+		result=$(f_ssh_cmd "mkdir -p ${path}McTest && rm -rf ${path}McTest && echo 0 || echo 1" "return_result");
+		;;
+esac;
+
+# Return true or false to calling function.
+echo "${result}";
+};

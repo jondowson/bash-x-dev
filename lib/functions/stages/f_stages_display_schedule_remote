@@ -1,0 +1,90 @@
+function f_stages_display_schedule_remote(){ 
+
+# About:
+# - This function loops through the remote functions in the order defined in project.json. 
+# - The order may have been changed by passed flags or runtime conditions.
+#   - These changes are configured in 'fp_project_custom_runorder'.
+
+# Usage:
+# f_stages_displayschedule_remote;
+# - No passed params. Call this function from the project's 'fp_project_start_remote' function.
+
+# ---------------------------------------------------------------
+# [1] Declare local variables with scope for this function only.
+
+local s;
+local r;
+local stage;
+local stage_title;
+local stage_concurrent;
+local stage_concurrentMsg;
+
+# ---------------------------------------------------------------
+# [2] Loop through each stage as defined in project.json and create a schedule table.
+
+${spacer}; 
+${plusLine};
+printf "%b\n" "${cyB}Remote project stages.${rs}";
+${plusLine}; 
+${spacer};
+sleep 1;
+
+for s in $(seq 1 ${vp_stage_count})
+do
+    
+    rstage_count="1";
+    while :; 
+    do
+    
+        # Create dynamic strings.
+        stage="vp_project_stages_s${s}_remote${rstage_count}";
+        stage_title="${stage}_title";
+        stage_concurrent="${stage}_concurrent";
+        stage_concurrentMsg="${stage}_concurrentMsg";
+
+        # Grab values from stage array and make vars global.
+        f_arrays_set_var "vp_stage_number"               "${s}";
+        f_arrays_set_var "vp_stage_title_value"          "${A_project_vars[${stage_title}]}";
+        f_arrays_set_var "vp_stage_concurrent_value"     "${A_project_vars[${stage_concurrent}]}";
+        f_arrays_set_var "vp_stage_concurrentMsg_value"  "${A_project_vars[${stage_concurrentMsg}]}";
+        
+        # Check if remote stage with this high a number exists or continue this inner loop.
+        if [[ "${vp_stage_title_value}" == "" ]]; then continue; fi;
+
+        # Apply --SKIPSTAGES or if other skip flag has been passed to 'fp_stages_alterations'.
+        skip="false";
+        if [[ "${vf_framework_flags_behaviour_skipstages}" != "false" ]] || [[ "${#a_skipstages[@]}" -gt "0" ]];then
+
+            # Check if this stage has been added to the skip stages array.
+            for k in ${a_skipstages[@]}
+            do
+                if [[ "${s}" == "${k}" ]];then
+                    skip="true";
+                fi;
+            done;
+        fi;
+
+        # Determine concurrency message.
+        if [[ ${vp_stage_concurrent_value} == "false" ]]; then
+            concurrent_message="serial process    ";
+        else
+            concurrent_message="parallel processes";
+        fi;
+
+        # Display when running project flag --HELP
+        if [[ "${vf_framework_flags_help}" == "true" ]];then
+            printf "%b\n" "${cyB}Stage ${vp_stage_number}/${vp_stage_count}:${rs} ${concurrent_message} - ${yl}${vp_stage_title_value}${rs}";
+        
+        # Display when running project stages.
+        else
+            if [[ "${skip}" == "true" ]];then 
+                printf "%b\n" "${cyB}Stage ${vp_stage_number}/${vp_stage_count}:${yl} - Skipping - ${concurrent_message} - ${vp_stage_title_value}${rs}";
+            else
+                printf "%b\n" "${cyB}Stage ${vp_stage_number}/${vp_stage_count}:${gr} - Running  - ${concurrent_message} - ${vp_stage_title_value}${rs}";
+            fi;
+            sleep 0.5;
+        fi;
+        rstage_count=$((rstage_count+1));
+    done;
+done;
+};

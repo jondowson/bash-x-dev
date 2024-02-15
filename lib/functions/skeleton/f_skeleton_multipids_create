@@ -1,0 +1,75 @@
+function f_skeleton_multipids_create(){
+
+cat << EOF > "${vf_path_framework_home}projects/${project_name}/lib/functions/fp_multipids/fp_multipids_create"
+function fp_multipids_create(){
+
+# ---------------------------------------------------------------
+# [1] These variables are local to this function.
+
+local loop_source_hostname;
+local loop_source_domain;
+local loop_source_interface;
+local loop_source_pubIp;
+local loop_source_gateway;
+local string_domain;
+local string_gateway;
+
+# ---------------------------------------------------------------
+# [2] Add any tests to ensure required arrays are not empty.
+
+# In this example '2' matches to error code '2' for the current stage ('0') as defined in 'errors.json'. 
+if [[ "\${#A_array_to_test[@]}" -eq "0" ]];then 
+    f_errors_exitmessages "\${FUNCNAME[0]}: $((LINENO))" "2" "";  
+fi;
+
+# ---------------------------------------------------------------
+# [3] Create the array that will be looped through for the project stages.
+
+# Below is an example of how to create an array of all the servers to connect to.
+# The array of all variables 'A_variables_all' is filtered and the values are put into a new array.
+# - The name of the new array is the first passed parameter.
+# To adapt this for your project:
+#  - Change the use of 'f_arrays_filter' as required.
+#  - Or instead directly handle the required project array to obtain the desired loopable structure. 
+# Note:
+# - 'A_loop_array' has already been declared by the framework.
+# - If using another name ensure to add it first to the project's 'arrays.json'.
+
+# This example of 'f_arrays_filter' function will:
+# - Filter the array of all variables 'A_variables_all' into a new array called 'A_loop_array'.
+# - Match all clusters with the '*'.
+# - Match all hostnames starting with 'abcd-'. 
+f_arrays_filter "A_loop_array" "vj_inventory_servers_*_service_\${vf_framework_flags_ssh_interface}_abcd-";
+
+# Loop through the filtered array to run the stage functions as sub-processes.
+for i in \${!A_loop_array[@]}
+do
+
+    # Take these from the json string key, as used in the filter function example above.
+    loop_source_parent="$(echo   \${i} | cut -d '_' -f4)";
+    loop_source_hostname="$(echo \${i} | cut -d '_' -f7)";
+    # This is the value of the key for the hostname.
+    loop_source_pubIp="$(echo    \${A_loop_array[\${i}]})";
+
+    # Create strings to use with the inventory array.
+    # The parent is the grouping or cluster that the 'source_hostname' belogs to, e.g. 'ref1' or 'ref2'.
+    string_domain="vj_inventory_servers_\${loop_source_parent}_service_\${vf_framework_flags_ssh_interface}_domain"; 
+    string_gateway="vj_inventory_servers_\${loop_source_parent}_service_\${vf_framework_flagss_sshinterface}_gateway";  
+    
+    # Grab the domain, interface and gateway for the specified interface that will be used to connect to each source server.
+    # These values are all held in the 'A_variables_inventory' array (or use the 'A_variables_all' array).
+    loop_source_domain="\${A_variables_inventory[\${string_domain}]}";
+    loop_source_gateway="\${A_variables_inventory[\${string_gateway}]}";
+
+    # For each source server run the stage functions as a subprocess and pipe output to a local 'source_hostname' specific log file.
+    f_stages_functions >> "\${vp_path_folder_timestamp_tests_logs_sublocal}\${loop_source_hostname}.log" 2>&1 &
+    pid=\${!};
+    details="\${loop_source_hostname}\${loop_source_domain},\${loop_source_interface},\${loop_source_pubIp},\${vp_stage_number}";
+    
+    # This array will be used by all the other multipid functions.
+    A_stage_pid_details["\${pid}"]="\${details}";
+
+done;
+};
+EOF
+};

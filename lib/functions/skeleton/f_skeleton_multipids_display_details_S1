@@ -1,0 +1,32 @@
+function f_skeleton_multipids_display_details_S1(){
+
+cat << EOF > "${vf_path_framework_home}projects/${project_name}/lib/functions/fp_multipids/fp_multipids_display_details_S1"
+function fp_multipids_display_details_S1(){
+
+# This function is the same as the 'fp_multipids_display_details' but with the stage number appended '_S1'.
+# It optionally allows the stage to display different info for its sub processes.
+# For each stage run with sub-processess, it checks for the existence of a function with its stage number appended '_Sx'.
+# If no bespoke function exists, it defaults to the function 'fp_multipids_display_details'. 
+
+printf "\n%b\n" "\${cyB}--> \${vp_stage_concurrentMsg_value}\${rs}";   
+for i in "\${!A_stage_pid_details[@]}"
+do
+    stageid="$(echo \${A_stage_pid_details[\$i]} | cut -d ',' -f4)";
+    if [[ "\${vp_stage_number}" == "\${stageid}" ]];then    
+        source_hostname="$(echo \${A_stage_pid_details[\${i}]}  | cut -d ',' -f1)";
+        source_interface="$(echo \${A_stage_pid_details[\${i}]} | cut -d ',' -f2)";
+        source_pubIp="$(echo \${A_stage_pid_details[\${i}]}     | cut -d ',' -f3)";
+
+        \${dashLine};
+        printf "%b\n" "\${yl}--> Info - \${rs}PID:                 \${i}";
+        printf "%b\n" "\${yl}--> Info - \${rs}Remote hostname:     \${source_hostname}";
+        printf "%b\n" "\${yl}--> Info - \${rs}Remote pubIp:        \${source_pubIp}";
+        printf "%b\n" "\${yl}--> Info - \${rs}Remote interface:    \${source_interface}";
+        printf "%b\n" "\${yl}--> Info - \${rs}Remote folder:       \${SSH_PATH_TARGET}\${vj_framework_name}";
+    fi;
+done;
+\${spacer}; 
+printf "%b\n" "\${cyB}--> Results to follow..\${rs}";
+};
+EOF
+};

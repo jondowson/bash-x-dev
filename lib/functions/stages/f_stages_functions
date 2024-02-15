@@ -1,0 +1,75 @@
+function f_stages_functions(){
+
+local stage_json_key;
+local num_tasks;
+local task;
+local task_title;
+local task_title_value;
+local function;
+local function_value;
+
+# Check for detailed sub process trace logging.
+if [[ ${1} == "--multipid" ]] && [[ "${vf_framework_flags_behaviour_trace}" == "true" ]];then
+    set -x;
+fi;
+
+# Assign the key for the current stage. 
+stage_json_key="vp_project_stages_s${vp_stage_number}";
+
+# Calculate number of tasks for this stage.
+num_tasks=0;
+task_count="1";
+while :; 
+do
+    task="${stage_json_key}_t${task_count}";
+    task_title="${task}_title";
+    task_title_value="${A_project_vars[${task_title}]}";
+    if [[ "${task_title_value}" == "" ]]; then break;fi;
+    ((num_tasks++));
+    ((task_count++));
+done;
+
+# Loop through each task for the stage.
+stage_task="1";
+while :; 
+do
+    # Grab from array the value stored in project.json.
+    task="${stage_json_key}_t${stage_task}";
+    task_title="${task}_title";
+    task_title_value="${A_project_vars[${task_title}]}";
+    
+    # Exit loop if task for this integer does not exist.
+    if [[ "${task_title_value}" == "" ]]; then break;fi;
+    
+    # Display the task title.
+    ${spacer}; 
+    ${dashLine};
+    printf "%b\n" "${ylB}Task ${stage_task}/${num_tasks}: ${yl}${task_title_value}${rs}";
+    ${dashLine};
+    sleep 2;
+    
+    # For the task, loop through each of its functions.
+    stage_task_function="1";
+    while :; 
+    do
+        # Grab from array the value stored in stages.json
+        function="${task}_f${stage_task_function}";
+        function_value="${A_project_vars[${function}]}";
+        
+        # Exit loop if function for this integer does not exist.
+        if [[ "${function_value}" == "" ]]; then break; fi;
+
+        # Continue to next loop iteration if task for this integer is to be skipped.
+        # The skip is assigned in the 'fp_stages_functions_alterations_loop'. 
+        if [[ "${function_value}" == "skip_function" ]]; then 
+            continue;
+        else
+            # Run the function.
+            ${function_value};
+        fi;
+        ((stage_task_function++));
+    done;
+    ((stage_task++));
+done;
+${spacer};
+};

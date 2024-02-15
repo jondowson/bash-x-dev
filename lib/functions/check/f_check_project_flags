@@ -1,0 +1,70 @@
+function f_check_project_flags(){
+
+# About:
+# - This generic/required function is called by the framework. 
+# - Checks all passed flags exist in help.json.
+# - If flag is not recognised then it calls the generic error function.
+
+# Usage:
+# f_check_project_flags;
+
+# ---------------------------------------------------------------
+# [1] Declare variables with local scope to this function. 
+
+local i;
+local string;
+local was_matched;
+local short_flag;
+local long_flag;
+
+# ---------------------------------------------------------------
+# [2] Attempt to find matching flag in help.json.
+
+  # Match on vj_help_flags_xxx_shortflag
+  was_matched="false";
+  for k in "${!A_json_help[@]}"
+  do
+    if [[ "$k" == *"vj_help_flags_"* ]] && [[ "$k" == *"_shortflag"* ]];then
+      
+      # Read from the json, this is the value for the shortflag, i.e. 'tc' (short flag for testcase).
+      shortflag=${A_json_help[${k}]};
+      
+      # Remove from end '_shortflag' to isolate the longflag json stem, i.e. 'vj_help_flags_testcase'.
+      longflag1=$(echo ${k%"_shortflag"});
+      
+      # Remove from start 'vj_help_flags' to isolate the longflag, i.e. 'testcase'.
+      longflag2=$(echo ${longflag1#"vj_help_flags_"});
+      
+      if [[ "-${shortflag}" == "${vf_flag_current}" ]] || [[ "--${longflag2}" == "${vf_flag_current}" ]];then
+        was_matched="true";
+        
+        # Declare as bash variable and add to array of all project variables: 
+        # - 'A_project_vars'
+        f_arrays_set_var "vp_help_flags_${longflag2}" "${vf_flag_current_value}";
+        break;
+      fi;
+    fi;
+  done;
+
+# ---------------------------------------------------------------
+# [3] Check if this flag was recognised else call error function.
+
+if [[ "${was_matched}" == "false" ]];then
+  f_display_colors "true";
+  f_display_banner;
+  ${spacer};
+  # Display project banner.
+  printf "%b\n" "${yl}--> Project name:${cy}         ${vj_project_name}";
+  printf "%b\n" "${yl}--> Project repo:${cy}         ${vj_project_repo}";
+  printf "%b\n" "${yl}--> Project version:${cy}      ${vj_project_version}${rs}";
+  ${dashLine};
+  ${spacer};
+  printf "%b\n" "${yl}--> Project started with these passed flags.${rs}";
+  ${spacer};
+  printf "%b\n" "${vf_args_passed}";
+  ${spacer};
+  
+  f_arrays_set_var "vf_framework_flags_behaviour_fastfail" "true";
+  f_errors_exitmessages "${FUNCNAME[0]}: $((LINENO))" "1";
+fi;
+};

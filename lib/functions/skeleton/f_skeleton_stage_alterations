@@ -1,0 +1,75 @@
+function f_skeleton_stage_alterations(){
+
+cat << EOF > ${vf_path_framework_home}projects/${project_name}/lib/functions/fp_project_custom_runorder
+function fp_project_custom_runorder(){
+
+# About:
+# - Perform logic before running a stage.
+# - Enables flags or conditions to alter program flow.
+# - Here the array 'A_json_stages' can be altered  to reassign the functions that are called.
+# - e.g. A_json_stages["vj_stages_s1_t1_f1"]="fp_S1_function_to_run";
+# - To ignore a function already defined in project.json 
+#   - assign it to nothing.
+#   - or perhaps reassign it to a screen msg display function.
+
+# Usage:
+# fp_project_custom_runorder;
+# - no passed params.
+
+# ---------------------------------------------------------------
+# [1] Handle case statement based on the current stage number.
+
+# Case statement to handle any passed flags or conditions that change program flow.
+case "\${vp_stage_number}" in
+
+    # ---------------------------------------------------------------
+    # If not making any stage alterations then uncomment the asterix option.
+    # - then for all stages no changes will be applied.
+    # *)
+        # :
+        # ;;
+    # ---------------------------------------------------------------
+    "HELP")
+        printf "%b\n" "\${yl}--> Info - \${rs}This project's stages can be skipped using the framework's '--SKIPSTAGES' flag. See example above.";
+        printf "%b\n" "\${yl}--> Info - \${rs}Note all stages are dependent on stage 1.";
+        \${spacer};;
+
+    # ---------------------------------------------------------------
+    "2")
+        # If showstats flag is false, dont display tests stats and tests table.
+        skip="false";
+        if [[ "\${vf_framework_flags_behaviour_skipstages}" == "true" ]];then
+            for k in \${a_skipstages[@]}
+            do
+                if [[ "\${k}" == "2" ]];then
+                    skip="true";
+                fi;
+            done;
+        fi;
+        if [[ "\${skip}" == "true" ]] || [[ "\${vp_help_flags_showstats}" == "false" ]];then 
+            # Append to the skipstages array.
+            a_skipstages+=( '2' );
+        fi;;
+
+    # ---------------------------------------------------------------
+    "5_remote1")
+        
+        skip="false";
+        if [[ "\${vf_framework_flags_behaviour_skipstages}" == "true" ]];then
+            for k in \${a_skipstages[@]}
+            do
+                if [[ "${k}" == "5_remote1" ]];then
+                    skip="true";
+                fi;
+            done;
+        fi;
+        if [[ "\${skip}" == "true" ]];then 
+            # Append to the skipstages array.
+            a_skipstages+=( '5_remote1' );
+        fi;;
+
+    esac;
+};
+EOF
+
+};

@@ -1,0 +1,124 @@
+function f_stages_functions_final(){
+
+# ---------------------------------------------------------------
+# [1] Get state of stage errors from arrays.
+
+error_array_size=${#A_project_stage_errors[@]};
+errcode_array_size=${#A_json_errors[@]};
+
+# ---------------------------------------------------------------
+# [2] Display the summary message for this run.
+
+if [[ "${error_array_size}" == "0" ]] && [[ "${vf_status_exitcode}" == "0" ]];then
+  final_exitcode="0";
+else
+  final_exitcode="1";
+fi;
+
+${spacer}; ${plusLine};
+printf "%b\n" "${cyB}Final project summary:${rs}";
+${plusLine}; ${spacer};
+sleep 1;
+printf "%b\n" "${yl}--> Info - ${rs}Duration:             $(f_utils_time "script_duration")s";
+printf "%b\n" "${yl}--> Info - ${rs}Fastfail:             ${vf_framework_flags_behaviour_fastfail}";
+printf "%b\n" "${yl}--> Info - ${rs}Exit-code:            ${final_exitcode}"; 
+
+# ---------------------------------------------------------------
+# [3] Display stage error table if applicable.
+
+if [[ "${final_exitcode}" != "0" ]];then
+    
+  printf "%b\n" "${yl}--> Info - ${rs}Total errors:         ${error_array_size}";
+  printf "\n%b\n" "${yl}--> Info - ${rs}Error table by stage:";
+  ${spacer};
+  printf '%s\t %-35s\t %-30s\t %-65s\t %s\n' "${bold}#" "${cy}Stage errorcode${rs}" "${wh}Amount${rs}" "${yl}Message${rs}" "${wh}Hint${rs}";
+  printf '%s\n' "==================================================================================================================================";
+  index=1;
+
+  # This loop counts occurences of errors in each stage and then prints a row summary to screen.
+  # The idea here is to display how many pids failed per stage.
+  # If it is a stage 0 error - then just exit as these errors are all immediate exits.
+  for i in $(seq 0 ${vp_stage_count})
+  do
+    count=0;
+    if [[ "${get_out}" == "true" ]];then break;fi;
+    for j in $(seq 1 ${errcode_array_size})
+    do
+      
+      if [[ "${get_out}" == "true" ]];then break;fi;
+      
+      loop_stage_exitcode="vj_errors_s${i}_e${j}";
+      
+      # Check if array index is set. If it is then abc will be returned and the test will be true, else it will fail.
+      [ ${A_json_errors["${loop_stage_exitcode}_message"]+abc} ] && \
+      for pid_stage_exitcode in ${!A_project_stage_errors[@]}; do
+          
+          # Either pid number or 'nopid'.
+          pid=$(echo ${pid_stage_exitcode}      | cut -d ',' -f1);
+          
+          # The stage number - e.g. 2
+          stage=$(echo ${pid_stage_exitcode}    | cut -d ',' -f2);
+          
+          # The exitcode integer that maps to the error.json. e.g 3
+          exitcode=$(echo ${pid_stage_exitcode} | cut -d ',' -f3);
+
+          array_stage_exitcode="vj_errors_s${stage}_e${exitcode}";
+
+          # Match on stage error codes.
+          if [[ "${loop_stage_exitcode}" == "${array_stage_exitcode}" ]]; then
+            err_id=${loop_stage_exitcode};
+            
+            # Retrieve the specific message and hint for the failure.
+            message=$(echo ${A_project_stage_errors[${pid_stage_exitcode}]} | cut -d ',' -f1);
+            hint=$(echo ${A_project_stage_errors[${pid_stage_exitcode}]}    | cut -d ',' -f2);
+            
+            # Check if hint is a variable - if so use '!' for indirection to resolve to value.
+            if [[ ${hint} == "vf_"* ]] || [[ ${hint} == "vp_"* ]] || [[ ${hint} == "vj_"* ]] || [[ ${hint} == **"USER"** ]]; then hint=${!hint}; fi;
+            (( count++ ));
+
+            # If its a stage 0 error - then just exit as these errors are all immediate exits.
+            if [[ "${loop_stage_exitcode}" == *"s0_"* ]]; then get_out="true"; fi;
+          fi;
+      done
+    done 
+
+    if [[ "${count}" != "0" ]] && [[ "${message}" != "" ]];then
+      if [[ "${index}" != "1" ]];then
+        printf '%s\n' "----------------------------------------------------------------------------------------------------------------------------------";
+      fi;
+      printf '%s\t %-35s\t %-30s\t %-65s\t %s\n' "${bold}${index}${rs}" "${cy}${err_id}${rs}" "${wh}${count}${rs}" "${yl}${message}${rs}" "${wh}${hint}${rs}"; 
+      ((index++));  
+    fi;
+  done;
+fi;
+${spacer};
+
+
+# ---------------------------------------------------------------
+# [4] If beyond stage 0, then tidy up logs and attempt to kill any outstanding pids.
+
+if [[ "${vp_stage_number}" != "0" ]];then
+
+  # Remove color codes from logs files to make easier to read.
+  vp_project_files_log="$(find ${vp_path_folder_logs} -name "*.log")";
+  for file in $(printf "%s\n" "${vp_project_files_log}"); do [ -f $file ] && f_utils_strings_sed "del_colorcodes" $file; done;
+
+  # ---------------------------------------------------------------
+  # Trap exit code and exit.
+  # If fastfail is true, then attempt to kill pids. 
+  if [[ "${vf_framework_flags_behaviour_fastfail}" == "true" ]] ;then
+    orphan_pids=$(echo $(jobs -p));
+    if [[ "${orphan_pids}" != "" ]] ;then
+      printf "%b\n" "${yl}--> Info - ${rs}Killing any orphan pids:\t    ${orphan_pids}";
+      ${spacer};
+      trap 'kill $(jobs -p) 2> /dev/null' EXIT 
+    fi;
+    exit ${final_exitcode};
+  fi;
+
+  # Set the exit code to that of the error message.
+  #trap "exit ${vf_status_exitcode}" HUP INT QUIT TERM ERR SIGINT SIGTERM EXIT
+  trap "exit ${final_exitcode}" EXIT
+fi;
+exit ${final_exitcode};
+};

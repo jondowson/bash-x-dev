@@ -1,0 +1,38 @@
+function f_utils_logs_rotate(){
+
+# About:
+# - This function deletes the contents of a folder based on a strategy.
+# - e.g. the age of the log files.
+
+# Usage:
+# See below each case stateent for example usage.
+
+# ---------------------------------------------------------------
+# [1] Create local function scope variables.
+
+local strategy;
+local filefolder;
+local condition;
+
+# ---------------------------------------------------------------
+# [2] Assign the passed parameter(s).
+
+strategy="${1}";
+filefolder="${2}";
+condition="${3}";
+
+# ---------------------------------------------------------------
+# [3] Select the required action from the case statement. 
+
+case "${strategy}" in
+
+# ---------------------------------------------------------------
+  "folder_writetime")
+    find "${filefolder}" -mmin +${condition} -type d ! -name ${filefolder} -exec rm -rf {} \; 2>/dev/null;;
+  
+  # Usage:
+  # f_utils_logs_rotate "folder_writetime" "/path/to/folder" "5";
+  # - This will delete all folders older than 5 mins.
+
+esac;
+};

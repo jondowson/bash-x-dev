@@ -1,0 +1,292 @@
+function f_minimise_project(){
+
+# About:
+# - minify bash-x lib folder into one file.
+
+# ---------------------------------------------
+# [1] Remove any existing minimised script folder and /tmp files.
+
+${spacer};
+printf "%b\n" "${cyB}Minifier for bash-x project.${rs}";
+
+${spacer};
+${equalsLine};
+printf "%b\n" "${cyB}Step 1: Remove any existing minifier related files.${rs}";
+${spacer};
+printf "%b\t%s\n" "${yl}--> info:${rs} Remove any existing minified files in the /tmp folder:" "${cy}/tmp/bx-*${rs}";
+printf "%b\t%s\n" "${yl}--> info:${rs} Remove any existing minified version of bash-x project:" "${cy}${vf_path_projects}${vp_project_name}.min${rs}";
+
+rm -rf /tmp/bx-*;
+if [[ -d "${vf_path_projects}${vp_project_name}.min" ]];then 
+    find "${vf_path_projects}${vp_project_name}.min" ! -name '.git' -maxdepth 1 -mindepth 1 -exec rm -rf {} \;
+fi;
+
+# ---------------------------------------------
+# [2] Create single file with all project function code.
+
+${spacer};
+${equalsLine};
+printf "%b\n" "${cyB}Step 2: Create single file with all project function code.${rs}";
+${spacer};
+printf "%b\t%s\n" "${yl}--> info:${rs} Create an edit file:" "${cy}tmp/bx-project${rs}";
+printf "%b\n" "${yl}--> info:${rs} - append all function files to it except ones containing heredoc functions.";
+printf "%b\n" "${yl}--> info:${rs} For each appended file:";
+printf "%b\n" "${yl}--> info:${rs} - remove all newlines from the end of the file.";
+printf "%b\n" "${yl}--> info:${rs} - ensure that the '}' on the last line is followed by a semicolon.";
+printf "%b\n" "${yl}--> info:${rs} - add a final newline after the '};' and make it the last line of the file.";
+${spacer};
+
+# Loop through all framework functions and append these all to the file /temp/bash-x.
+for filename in ${vf_path_projects}${vp_project_name}/lib/functions/*/*
+do
+    if ! grep -qE '<< *EOF|cat *<< *EOF' ${filename}; then
+        
+        # Remove all newlines from the end of the file.
+        ${vf_cmd_sed} -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "${filename}";
+        
+        # Ensure that the '}' on the last line is followed by a semicolon if it's not already.
+        ${vf_cmd_sed} -i '$s/}$/};/' "${filename}";
+        
+        # Add a final newline after the '};' and make it the last line of the file.
+        ${vf_cmd_sed} -i -e '$a\' "${filename}";
+
+        # Display to screen on same line the file in the loop.
+        printf "\r${yl}--> Appending function file:${rs} %s" "${filename}";
+        
+        # Append the content to "/tmp/bx-project".
+        cat "${filename}" >> "/tmp/bx-project";
+        # Clear the line for the next iteration.
+        printf "\033[K";
+    fi;
+done;
+${spacer};
+
+# Copy these four required functions to their own file for now. They need to be appended after the other functions later.
+cat "${vf_path_projects}${vp_project_name}/lib/fp_project_custom_json"      >  "/tmp/bx-project-fp";
+cat "${vf_path_projects}${vp_project_name}/lib/fp_project_custom_runorder"   >> "/tmp/bx-project-fp";
+cat "${vf_path_projects}${vp_project_name}/lib/fp_project_start_remote"     >> "/tmp/bx-project-fp";
+cat "${vf_path_projects}${vp_project_name}/lib/fp_project_start"            >> "/tmp/bx-project-fp";
+
+# ---------------------------------------------
+# [3] Prepare the file for minimisation.
+
+${spacer};
+${equalsLine};
+printf "%b\n" "${cyB}Step 3: Prepare the file for minimisation.${rs}";
+${spacer};
+printf "%b\n" "${yl}--> info:${rs} From both '/tmp/bx-project' and '/tmp/bx-project-fp' remove:";
+printf "%b\n" "${yl}--> info:${rs} - all comments.";
+printf "%b\n" "${yl}--> info:${rs} - all empty lines.";
+printf "%b\n" "${yl}--> info:${rs} - all trailing backslashes used to join lines.";
+
+tmp_files=( "/tmp/bx-project" "/tmp/bx-project-fp" );
+
+for filename in ${tmp_files[@]}
+do
+    # Remove the 'function' keyword from script.
+    # This searches for 'function fp_' and replaces with 'fp_'.
+    ${vf_cmd_sed} -i -e 's/function[[:space:]]\+fp_/fp_/g' "${filename}";
+
+    # Remove all comments including the hashbang from the bash-x script.
+    ${vf_cmd_sed} -e '/^\s*#/d' -e '/^#[^!].*$/d' -e :a -e '$!N;s/\n#.*$//;ta' -e 'P;D' -i "${filename}";
+
+    # Remove all empty lines.
+    ${vf_cmd_sed} -i -e '/^[[:space:]]*$/d' "${filename}";
+
+    # Remove all trailing backslashes that join lines and bring following line up.
+    ${vf_cmd_sed} -i ':a;N;$!ba;s/\\\n//g' "${filename}";
+done;
+
+# ---------------------------------------------
+# [4] Join the lines for both files.
+
+${spacer};
+${equalsLine};
+printf "%b\n" "${cyB}Step 4: Join lines.${rs}";
+${spacer};
+printf "%b\n" "${yl}--> info:${rs} For both '/tmp/bx-project' and '/tmp/bx-project-fp':";
+printf "%b\n" "${yl}--> info:${rs} - join each line to the one above.";
+printf "%b\n" "${yl}--> info:${rs} - move each function onto own line for the .debug version of the minimised file.";
+
+# Join each line to the one above.
+f_utils_join_lines "/tmp/bx-project";
+f_utils_join_lines "/tmp/bx-project-fp";
+
+# For easier debugging, move each function onto its own line.
+${vf_cmd_sed} -E -i 's/([a-zA-Z0-9_]+)\(\)\{/\n\1\(\)\{/g' "/tmp/bx-project";
+${vf_cmd_sed} -E -i 's/([a-zA-Z0-9_]+)\(\)\{/\n\1\(\)\{/g' "/tmp/bx-project-fp";
+
+# ---------------------------------------------
+# [5] Make corrections to file so that it runs.
+
+${spacer};
+${equalsLine};
+printf "%b\n" "${cyB}Step 5: Make final corrections.${rs}";
+${spacer};
+echo "${yl}--> info:${rs} Apply rules for both '/tmp/bx-project' and '/tmp/bx-main':";
+${spacer};
+IFS=",";
+a_correction_titles[0]="Strings that must be followed by a semicolon";
+a_correction_titles[1]="Strings that must be preceded by a semicolon";
+a_correction_titles[2]="Strings with one space and then a semicolon";
+a_correction_titles[3]="Strings with no semicolons after them";
+a_correction_titles[4]="Add semicolon after 'else' if followed by";
+a_correction_titles[5]="Remove semicolon if found after";
+a_correction_titles[6]="Remove semicolon if found after these special chars";
+a_correction_titles[7]="Replace '; ;' with ';'";
+a_correction_titles[8]="Remove semicolons between '{' and";
+a_correction_titles[9]="Remove semicolons before '<<<' and";
+
+a_correction_values[0]="done,fi";
+a_correction_values[1]="do,done,case,fi";
+a_correction_values[2]="for";
+a_correction_values[3]="do,then,else";
+a_correction_values[4]="if,while,until,case";
+a_correction_values[5]="case";
+a_correction_values[6]="&";
+a_correction_values[7]="n/a";
+a_correction_values[8]="if,case";
+a_correction_values[9]="done";
+
+count=0;
+for f in ${tmp_files[@]}
+do
+   ((++count));
+    for i in "${!a_correction_titles[@]}"
+    do
+        rule_num="${i}";
+        rule_desc="${a_correction_titles[$i]}";
+        rule_items="${a_correction_values[${rule_num}]}";
+
+        if [[ "${count}" == "1" ]];then
+            printf '%s\t %-50s\t %s\n' "${yl}--> rule: ${rule_num}${rs}" "${rule_desc}: ${about}" "${cy}${rule_items}${rs}";
+        fi;
+
+        edit_count=0;
+
+        for e in $rule_items
+        do
+            case "${rule_num}" in
+            # ---------------------------------------------------------------
+            "0")
+                ${vf_cmd_sed} -E -i "s/(^|[[:space:]])${e}([[:space:]]|$)/\1${e};\2/"        "${f}";;
+            # ---------------------------------------------------------------
+            "1")
+                ${vf_cmd_sed} -E -i "s/;+\b${e}\b/; ${e}/g; s/([^;])\b${e}\b/\1; ${e}/g"     "${f}";;
+            # ---------------------------------------------------------------
+            "2")
+                ${vf_cmd_sed} -E -i "s/;[[:space:]]*${e}/; ${e}/g"                           "${f}";;
+            # ---------------------------------------------------------------
+            "3")
+                ${vf_cmd_sed} -E -i "s/${e}\s*;/${e} /g"                                     "${f}";;
+            # ---------------------------------------------------------------
+            "4")
+                ${vf_cmd_sed} -E -i "s/${e}\s*;/${e} /g"                                     "${f}";;        
+            # ---------------------------------------------------------------
+            "5")
+                ${vf_cmd_sed} -E -i "s/${e}\s*;/${e} /g"                                     "${f}";;  
+            # ---------------------------------------------------------------
+            "6")
+                ${vf_cmd_sed} -E -i "s/\\${e}\s*;/\\${e} /g"                                 "${f}";;  
+            # ---------------------------------------------------------------
+            "7")
+                ${vf_cmd_sed} -E -i "s/;[[:space:]]+;/;/g"                                   "${f}";;         
+            # ---------------------------------------------------------------
+            "8")
+                ${vf_cmd_sed} -i "s/{\s*;\s*${e}/{ ${e}/g"                                   "${f}";;
+            # ---------------------------------------------------------------
+            "9")
+                ${vf_cmd_sed} -E -i "s/${e};[[:space:]]*<<</${e} <<</g"                      "${f}";;
+
+            esac;
+        done;
+    done;
+done;
+unset IFS;
+
+# ---------------------------------------------
+# [6] Create a debug copy of the file
+
+cp /tmp/bx-project /tmp/bx-project-debug;
+
+# Join each line to the one above for the final minimised file.
+f_utils_join_lines "/tmp/bx-project";
+
+# ---------------------------------------------
+# [7] Append the heredoc functions last as they cannot be minimised.
+
+${spacer};
+${equalsLine};
+printf "%b\n" "${cyB}Step 6: Append the heredoc functions (cannot be minimised) to '/tmp/bx-project'.${rs}";
+${spacer};
+
+for filename in ${vf_path_projects}${vp_project_name}/lib/functions/*/*; do
+    if grep -qE '<< *EOF|cat *<< *EOF' ${filename}; then
+
+        # Remove all newlines from the end of the file.
+        ${vf_cmd_sed} -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "${filename}";
+        
+        # Ensure that the '}' on the last line is followed by a semicolon if it's not already.
+        ${vf_cmd_sed} -i '$s/}$/};/' "${filename}";
+
+        # Add a final newline after the '};' and make it the last line of the file.
+        ${vf_cmd_sed} -i -e '$a\' "${filename}";
+        
+        # Display to screen on same line the file in the loop.
+        printf "\r${yl}--> Appending heredoc function file:${rs} %s" "${filename}";
+        
+        # Append the content to '/tmp/bx-framework' and '/tmp/bx-framework.debug'.
+        cat "${filename}" >> "/tmp/bx-project";
+        cat "${filename}" >> "/tmp/bx-project-debug";
+
+        # Clear the line for the next iteration.
+        printf "\033[K";
+    fi;
+done;
+${spacer};
+
+# ---------------------------------------------
+# [8] Append last minimised functions after heredoc functions.
+
+${spacer};
+${equalsLine};
+printf "%b\n" "${cyB}Step 7: Append temp files to each other.${rs}";
+${spacer};
+
+echo "${yl}--> info:${rs} Append '/tmp/bx-project-fp' to '/tmp/bx-project'";
+echo "${yl}--> info:${rs} Append '/tmp/bx-project-fp' to '/tmp/bx-project-debug'";
+
+cat /tmp/bx-project-fp >> "/tmp/bx-project";
+cat /tmp/bx-project-fp >> "/tmp/bx-project-debug";
+
+# ---------------------------------------------
+# [9] Move edit file to the bash-x folder.
+
+${spacer};
+${equalsLine};
+printf "%b\n" "${cyB}Step 8: Move tmp files to bash-x folder.${rs}";
+${spacer};
+
+echo "${yl}--> info: ${rs} Create target folders in ${cy}${vf_path_projects}${vp_project_name}.min${rs}";
+mkdir -p  "${vf_path_projects}${vp_project_name}.min";
+mkdir -p  "${vf_path_projects}${vp_project_name}.min/input_output";
+mkdir -p  "${vf_path_projects}${vp_project_name}.min/json";
+mkdir -p  "${vf_path_projects}${vp_project_name}.min/cicd";
+
+cp -r ${vf_path_projects}${vp_project_name}/json "${vf_path_projects}${vp_project_name}.min/";
+cp -r ${vf_path_projects}${vp_project_name}/README "${vf_path_projects}${vp_project_name}.min/";
+cp ${vf_path_projects}${vp_project_name}/README.md "${vf_path_projects}${vp_project_name}.min/";
+
+# Change these two json elements to have the .min extension.
+${jq} ".project.name = \"${vp_project_name}.min\"" "${vf_path_projects}${vp_project_name}.min/json/project/project.json" > "/tmp/bx-tmpjson.json" && mv "/tmp/bx-tmpjson.json" "${vf_path_projects}${vp_project_name}.min/json/project/project.json";
+min_repo="https://git.swisscom.com/projects/CSL/repos/bash-x-projects/browse/network-connectivity-checker.min";
+${jq} ".project.repo = \"${min_repo}\"" "${vf_path_projects}${vp_project_name}.min/json/project/project.json" > "/tmp/bx-tmpjson.json" && mv "/tmp/bx-tmpjson.json" "${vf_path_projects}${vp_project_name}.min/json/project/project.json";
+
+mv /tmp/bx-project        "${vf_path_projects}${vp_project_name}.min/${vp_project_name}.min";
+mv /tmp/bx-project-debug  "${vf_path_projects}${vp_project_name}.min/${vp_project_name}.debug";
+
+echo "${yl}--> info: ${rs} Assign execute permissions on folder ${cy}${vf_path_projects}${vp_project_name}.min${rs}";
+chmod +x "${vf_path_projects}${vp_project_name}.min/${vp_project_name}.min"; 
+chmod +x "${vf_path_projects}${vp_project_name}.min/${vp_project_name}.debug";
+${spacer};
+};

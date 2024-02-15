@@ -1,0 +1,94 @@
+function f_errors_exitmessages_framework(){
+
+# About:
+# - This function is called when an error is trapped in the initial framework code.
+# - All framework errors are show-stoppers and result in an exit code of '1'.
+# - Note that once the program flow has made it to the project code, then this function is no longer used for error handling.
+#   - instead 'f_errors_exitmessages' is used. 
+
+# Usage:
+# f_errors_exitmessages_framework "${FUNCNAME[0]}: $((LINENO))" "2";
+# - param1: name of the function and line number where the error occurred.
+# - param2: the matching array error code (defined in the function 'f_errors_codes').
+
+# ---------------------------------------------------------------
+# [1] Create local function scope variables.
+
+local exitlocation;
+local errcode;
+local message_string;
+local hint_string;
+
+# ---------------------------------------------------------------
+# [2] Assign passed params.
+
+exitlocation="${1}";
+errcode="${2}";
+
+# ---------------------------------------------------------------
+# [3] Refresh the variables stored in the framework error array.
+
+f_errors_codes; 
+
+# ---------------------------------------------------------------
+# [4] Grab the value store in the framework error array.
+# - the 'message' is the string before the comma ',' delimiter.
+# - the 'hint' is the string and/or variable after the comma ',' delimiter.
+
+message_string="$(echo ${A_framework_stage_errcodes[${errcode}]} | cut -d ',' -f1)";
+hint_string="$(echo    ${A_framework_stage_errcodes[${errcode}]} | cut -d ',' -f2)";
+
+# ---------------------------------------------------------------
+# [5] Resolve indirect variable if hint is itself a variable.
+
+if [[ ${hint_string} == "vf_"* ]] || [[ ${hint_string} == "vp_"* ]] || \
+   [[ ${hint_string} == "vj_"* ]] || [[ ${hint_string} == **"USER"** ]]; then vf_status_exithint=${!hint_string}; 
+fi;
+
+# ---------------------------------------------------------------
+# [6] Assign exit code and display exit summary.
+
+final_exitcode=1;
+
+if [[ "${vf_framework_flags_display_color}" == "true" ]];then 
+  f_display_colors "true"; 
+else 
+  f_display_colors "false";
+fi;
+f_display_banner;
+
+printf "\n";
+printf "%b\n" "${rdB}--> Framework failure:${rs}";
+printf "%b\n" "${yl}--> Info - Duration:            ${rs}$(f_utils_time "script_duration")s";
+printf "%b\n" "${yl}--> Info - Message:             ${rs}${message_string}";
+printf "%b\n" "${yl}--> Info - Hint:                ${rs}${hint_string}";
+printf "%b\n" "${yl}--> Info - Framework-err-code:  ${rs}${errcode}"; 
+printf "%b\n" "${yl}--> Info - Exit-code:           ${rs}${final_exitcode}"; 
+
+if [[ "${exitlocation}" != "" ]]; then  
+  printf "%b\n" "${yl}--> Info - Where:               ${rs}${exitlocation}"; 
+fi;
+printf "\n";
+
+function_trace=$(for i in ${!FUNCNAME[@]}; do printf "%s" "${FUNCNAME[$i]},"; done;);
+if [[ "${function_trace}" != "" ]]; then
+    printf "%s\n" "============================================================";
+    printf "\n";
+    printf "%b\n" "${yl}--> Info - Function trace:${rs}";
+    IFS=',' read -r -a array <<< "${function_trace}";
+    count=0;
+    for i in "${array[@]}";
+    do
+        printf "%b\n" "${cy}Level:    ${rs}${count}";
+        printf "%s\n" "${i}";
+        ((count=count+1));
+    done;
+    printf "\n";
+    printf "%s\n" "============================================================";
+    printf "\n";
+fi;
+
+# ---------------------------------------------------------------
+# [7]  Exit with code 1.
+exit ${final_exitcode};
+};

@@ -1,0 +1,90 @@
+function f_auth(){
+
+# ---------------------------------------------------------------
+# [1] Re-assign project credential variables to work with framework functions.
+
+# Authentification can be username and password, keys or keys with password.
+# If running from Jenkins, the username and password will be passed in as environment variables.
+# - USERNAME + PASSWORD (defined in Jenkinsfile).
+# If running locally then we are either:
+# - using a username with a password, or username with password protected key (requires sshpass to be installed to provide the password interactively).
+# - using a username with a just a key.
+
+# Determine which approach we are using from this flag.
+AUTH_APPROACH="${vf_framework_flags_ssh_approach}"; 
+
+# These variables are not dependent on approach so set now. 
+f_arrays_set_var "SSH_PATH_TARGET"     "${vf_framework_flags_ssh_targetpath}";
+f_arrays_set_var "vp_path_remote_logs" "${SSH_PATH_TARGET}bash-x-projects/${vp_project_name}/input_output/logs/*.log";
+
+# Test for conditions.
+result="";
+
+# All authentication approaches require ssh to be installed locally.
+isthere=$(command -v ssh);
+# The result is the error code in f_errors_codes.
+if [[ "${isthere}" == "" ]]; then result="ssh command unavailable"; fi;
+# For ssh connections, a target folder is always required.
+if [[ "${SSH_PATH_TARGET}" == "" ]]; then result="ssh target path not defined"; fi;
+
+case "${AUTH_APPROACH}" in
+
+# ---------------------------------------------------------------
+	"user_pass")
+        f_arrays_set_var "USERNAME" "${vf_framework_flags_ssh_user}";
+	f_arrays_set_var "PASSWORD" "$(cat ${vf_framework_flags_ssh_passpath} 2> /dev/null)";
+
+        if [[ "${USERNAME}" == "" ]]; then    result="no ssh user specified"; fi;
+        if [[ "${PASSWORD}" == "" ]]; then    result="${result} + no ssh user password specified"; fi;
+        isthere=$(command -v sshpass);
+        if [[ "${isthere}" == "" ]]; then     result="${result} + no sshpass command available"; fi;
+        ;;
+
+# ---------------------------------------------------------------
+	"user_key")
+        f_arrays_set_var "SSH_PATH_KEY" "${vf_framework_flags_ssh_keypath}";
+        f_arrays_set_var "USERNAME"     "${vf_framework_flags_ssh_user}";
+        
+        if [[ "${USERNAME}" == "" ]]; then    result="no ssh user specified"; fi;
+        if [[ ! -f "${SSH_PATH_KEY}" ]]; then result="${result} + empty ssh key path"; fi;
+        ;;
+
+# ---------------------------------------------------------------
+	"user_pass_key")
+        f_arrays_set_var "SSH_PATH_KEY" "${vf_framework_flags_ssh_keypath}";
+        f_arrays_set_var "USERNAME"     "${vf_framework_flags_ssh_user}";
+		f_arrays_set_var "PASSWORD"     "$(cat ${SSH_PATH_KEY} 2> /dev/null)";
+
+        if [[ "${USERNAME}" == "" ]]; then    result="no ssh user specified"; fi;
+        if [[ "${PASSWORD}" == "" ]]; then    result="${result} + no ssh user password specified"; fi;
+        isthere=$(command -v sshpass);
+        if [[ "${isthere}" == "" ]]; then     result="${result} + no sshpass command available"; fi;
+        if [[ ! -f "${SSH_PATH_KEY}" ]]; then result="${result} + empty ssh key path"; fi;
+        ;;
+
+# ---------------------------------------------------------------
+	"cicd_user_pass")
+		# These are environment variables set by Jenkins.
+        f_arrays_set_var "USERNAME" "${USERNAME}";
+        f_arrays_set_var "PASSWORD" "${PASSWORD}";
+        
+        if [[ "${USERNAME}" == "" ]]; then    result="no ssh user specified"; fi;
+        if [[ "${PASSWORD}" == "" ]]; then    result="${result} + no ssh user password specified"; fi;
+        ;;
+
+# ---------------------------------------------------------------
+	*)
+        result="Non-valid user authentication specified: ${AUTH_APPROACH}";;
+
+esac;
+
+# ---------------------------------------------------------------
+# [2] Exit on any failure.
+
+if [[ "${result}" != "" ]]; then
+    f_arrays_set_var "vf_framework_flags_behaviour_fastfail" "true";
+    # The 2nd param maps to array.json error error number for the current stage (stage 0).
+    f_arrays_set_var "vf_dynamic_error_msg" "${result}";
+    f_errors_exitmessages_framework "${FUNCNAME[0]}: $((LINENO))" "authentication";
+fi;
+};

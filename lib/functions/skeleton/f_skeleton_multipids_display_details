@@ -1,0 +1,38 @@
+function f_skeleton_multipids_display_details(){
+
+cat << EOF > "${vf_path_framework_home}projects/${project_name}/lib/functions/fp_multipids/fp_multipids_display_details";
+function fp_multipids_display_details(){
+
+# About:
+# - This function displays the details of each pid as it is being run.
+# - The array 'A_stage_pid_details' is populated by the 'fp_multipids_create' function.
+# - The key is the unique pid id and the standard value is:
+#   "\${loop_source_hostname}\${loop_source_domain},\${loop_source_interface},\${loop_source_pubIp},\${vp_stage_number}";  
+# - Additional values may have been added after these.
+
+# Template instructions:
+# - Use as is or adapt below what is displayed for this stage.
+
+printf "\n%b\n" "\${cyB}--> \${vp_stage_concurrentMsg_value}\${rs}";   
+for i in "\${!A_stage_pid_details[@]}"
+do
+    stageid="\$(echo \${A_stage_pid_details[\${i}]} | cut -d ',' -f4)";
+    if [[ "\${vp_stage_number}" == "\${stageid}" ]];then    
+        
+        source_hostname="\$(echo  \${A_stage_pid_details[\${i}]} | cut -d ',' -f1)";
+        source_interface="\$(echo \${A_stage_pid_details[\${i}]} | cut -d ',' -f2)";
+        source_pubIp="\$(echo     \${A_stage_pid_details[\${i}]} | cut -d ',' -f3)";
+
+        \${dashLine};
+        printf "%b\n" "\${yl}--> Info - \${rs}PID:                 \${i}";
+        printf "%b\n" "\${yl}--> Info - \${rs}Remote hostname:     \${source_hostname}";
+        printf "%b\n" "\${yl}--> Info - \${rs}Remote pubIp:        \${source_pubIp}";
+        printf "%b\n" "\${yl}--> Info - \${rs}Remote interface:    \${source_interface}";
+        printf "%b\n" "\${yl}--> Info - \${rs}Remote folder:       \${SSH_PATH_TARGET}\${vj_framework_name}";
+    fi;
+done;
+\${spacer}; 
+printf "%b\n" "\${cyB}--> Results to follow..\${rs}";
+};
+EOF
+};

@@ -1,0 +1,346 @@
+#!/usr/bin/env bash
+
+# About:
+# - The start script for the bash-x framework.
+# - This is the only script in the bash-x framework as all other code is in functions.
+# - This script sets up initial framework arrays and variables before calling the 'f_framework' function.
+
+# Usage:
+# bash-x --HELP
+# - See the help screen for other flags that can be passed.
+
+# ---------------------------------------------------------------
+# [1] Define arrays used by framework (A_ = associative array; a_ = normal array).
+
+# For all framework and project variables defined using 'f_arrays_set_var'.
+declare -A A_framework_vars;
+declare -A A_project_vars;
+
+# For holding values from the framework and project json.
+# Subsequent project arrays may well be created to hold other json defined values.
+declare -A A_framework_json;
+declare -A A_project_json;
+declare -A A_json_stages;
+declare -A A_json_arrays;
+declare -A A_json_help;
+declare -A A_json_errors;
+
+# The array of all variables and the array of all empty variables.
+# Useful for debugging and populated with 'f_arrays_set_var'.
+declare -A A_variables_all;
+declare -A A_variables_all_empty;
+# Used for display purposes - an alphabetically sorted version.
+declare -a a_variables_all_ordered;
+
+# The array used to hold the framework error messages.
+declare -A A_framework_stage_errcodes;
+declare -A A_framework_stage_errcodes_optional;
+
+# The arrays to store the result of the dependency_checker and version_checker functions for framework
+declare -A A_dependency_checked;
+declare -A A_dependency_installed;
+
+# The arrays to store the result of the dependency_checker and version_checker functions for project
+declare -A A_dependency_checked_project;
+declare -A A_dependency_installed_project;
+declare -A A_dependency_checked_project_execute;
+declare -A A_dependency_checked_project_make;
+declare -A A_dependency_installed_project_execute;
+declare -A A_dependency_installed_project_make;
+
+# The array to store metadata about the OS, hardware, users, ...
+declare -A A_metadata;
+
+# Used for display purposes - an alphabetically sorted version.
+declare -a a_metadata_ordered;
+
+# The array for running multipid functions that handle subprocesses.
+declare -a a_multipds_runorder;
+
+# Used for skeleton project json templates.
+declare -A A_json_project_template;
+
+# The multipid details are tracked by these arrays.
+declare -A A_stage_pid_details;
+declare -A A_stage_pid_fails;
+declare -a a_stage_pid_success;
+
+# Array name reserved for looping through remote servers.
+declare -A A_source_servers;
+
+# Hold errors collected during project stages.
+declare -A A_project_stage_errors; 
+
+# Used by these flags to grab comma separated values.
+declare a_limit;
+declare a_skipstages;
+
+# Used by project minimiser function.
+declare -a A_correction_titles;
+declare -a A_correction_values;
+
+# ---------------------------------------------------------------
+# [2] Save the PATH before the framework is run + establish path to framework.
+
+vf_path_before="${PATH}";
+vf_script_name=$(basename "$0");
+vf_script_path="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || greadlink -f "${BASH_SOURCE[0]}")";
+# e.g. a/b/c/bash-x-dev/lib or /a/b/c/bash-x
+vf_path_framework_home="$(dirname "${vf_script_path}")";
+# Add trailing slash. 
+vf_path_framework_home="${vf_path_framework_home}/";
+# Get parent, grandparent and great-grandparent folder paths of bash-x script.
+# e.g. a/b/c/bash-x-dev or /a/b/c
+vf_path_framework_parent=$(dirname "${vf_path_framework_home}");
+# e.g. a/b/c or /a/b
+vf_path_framework_gparent=$(dirname "${vf_path_framework_parent}");
+
+# ---------------------------------------------------------------
+# [3] Source all framework functions. 
+
+# If using the development version of the framework.
+if [[ "${vf_path_framework_home}" == *"/bash-x-dev/lib/"* ]];then
+  vf_path_framework_home="${vf_path_framework_parent}/";
+  vf_path_framework_parent="${vf_path_framework_gparent}/";
+  vf_framework_source_list="$(find ${vf_path_framework_home}lib/functions -name "*" ! -name ".DS_Store")";
+  for file in $(printf "%s\n" "${vf_framework_source_list}"); do [ -f $file ] && . $file;done;
+else
+  # Set this variable but the minimised bash-x file does not need sourcing. 
+  vf_bashx_minified="true";
+fi;
+
+# ---------------------------------------------------------------
+# [4] Attempt to use a bash version greater than 4 if it is installed but not set as default version.
+# This version is required for associative arrays used by framework.
+
+raw_bash_version=$(bash --version);
+regex="v?([0-9]+(\.[0-9]+)+)";
+[[ ${raw_bash_version} =~ ${regex} ]];
+version_number="${BASH_REMATCH[0]}";
+vf_bash_version=$(echo "${version_number}" | sed 's/[^0-9.]//g');
+
+if [[ ${vf_bash_version:0:1} < 4 ]]; then
+  if [[ $BASH_UPGRADE_ATTEMPTED != 1 ]]; then
+    export BASH_UPGRADE_ATTEMPTED=1;
+    export PATH=/usr/local/bin:"$PATH":/bin;
+    exec "$(which bash)" --noprofile "$0" """$@""";
+  else
+    export OLD_BASH=1;
+  fi;
+fi;
+
+if [[ ${vf_bash_version:0:1} -lt 4 ]]; then
+  f_arrays_set_var "vf_dynamic_error_msg" "Bash version less than 4. On Mac use --SETUP flag to resolve issue with Homebrew.";
+  f_errors_exitmessages_framework "${FUNCNAME[0]}: $((LINENO))" "bashx";
+fi;
+
+# ---------------------------------------------------------------
+# [5] The --SETUP flag can be handled now.
+  
+  vf_os_identify=$(f_utils_os);
+  if [[ "${1}" == "-S" ]] || [[ "${1}" == "--SETUP" ]]; then
+    f_display_colors "true";
+    f_display_banner; 
+    f_setup;
+    exit 0;
+  fi;
+
+# ---------------------------------------------------------------
+# [6] Detect host OS and assign behaviour (mainly for the benefit of brew installed Mac packages).
+  
+  if [[ "${vf_os_identify}" == "Mac" ]]; then
+    
+    # Point to a brew install of jq.
+    command=$(/usr/local/bin/jq --version 2>/dev/null);
+    if [[ $? == 0 ]];then
+      export PATH=/usr/local/bin:$PATH;
+      jq="/usr/local/bin/jq";
+    else
+      command=$(/opt/homebrew/bin/jq --version 2>/dev/null);
+      if [[ $? == 0 ]];then
+        export PATH=/opt/homebrew/bin:$PATH;
+        jq="/opt/homebrew/bin/jq";
+      else
+          f_arrays_set_var "vf_dynamic_error_msg" "Install Homebrew package manager with --SETUP flag";
+          f_errors_exitmessages_framework "${FUNCNAME[0]}: $((LINENO))" "bashx";
+      fi;
+    fi;
+
+    # Homebrew packages are usually prefixed with 'g'.
+    vf_cmd_sed=$(which gsed)      >/dev/null 2>&1 || vf_cmd_sed="gsed";
+    vf_cmd_date=$(which gdate)    >/dev/null 2>&1 || vf_cmd_date="gdate";
+    vf_cmd_awk=$(which gawk)      >/dev/null 2>&1 || vf_cmd_awk="gawk";
+    vf_cmd_grep=$(which ggrep)    >/dev/null 2>&1 || vf_cmd_grep="ggrep";
+    vf_cmd_iproute=$(which ip)    >/dev/null 2>&1 || vf_cmd_iproute="ip";
+    vf_cmd_docker=$(which docker) >/dev/null 2>&1 || vf_cmd_docker="docker";
+    
+    # Assign local ip variable on Mac.
+    vf_local_ip="$(ifconfig | grep "inet " | grep -Fv 127.0.0.1 | awk '{print $2}')";
+  
+  # Linux other than Mac. 
+  else
+    # Point to scripts folder jq binary.
+    installed=$(which jq);
+    if [[ $? == 0 ]];then
+      export JQ_HOME=$(f_utils_strings_bpe "keep_fromleft_upto_excluding" ${installed} "/");
+      jq="${installed}";
+    else
+      # Check if amd64/arm64/armv7l or x86_64.
+      vf_architecture=$(uname -m);
+      if [[ "$vf_architecture" == *"x86_64"* ]];then
+        export JQ_HOME="${vf_path_framework_home}jq/x86_64";
+      elif [[ "$vf_architecture" == *"x86_32"* ]];then
+        export JQ_HOME="${vf_path_framework_home}jq/x86_32";
+      elif [[ "$vf_architecture" == *"aarch64"* ]] || [[ "$vf_architecture" == *"arm64"* ]];then
+        export JQ_HOME="${vf_path_framework_home}jq/arm64";
+      else
+        export JQ_HOME="${vf_path_framework_home}jq/arm32";
+      fi;
+      export PATH=$JQ_HOME:$PATH;
+      jq="${JQ_HOME}/jq";
+    fi;
+
+    vf_cmd_sed="$(which sed)"     >/dev/null 2>&1 || vf_cmd_sed="sed";
+    vf_cmd_date="$(which date)"   >/dev/null 2>&1 || vf_cmd_date="date";
+    vf_cmd_awk="$(which awk)"     >/dev/null 2>&1 || vf_cmd_awk="awk";
+    vf_cmd_grep="$(which grep)"   >/dev/null 2>&1 || vf_cmd_grep="grep";
+    vf_cmd_docker=$(which docker) >/dev/null 2>&1 || vf_cmd_docker="docker";
+    vf_cmd_iproute=$(which ip)    >/dev/null 2>&1 || \
+    if [[ "${vf_os_identify}" == "Centos" ]] || [[ "${vf_os_identify}" == "Redhat" ]]; then 
+      vf_cmd_iproute="/usr/sbin/ip";
+    else
+      vf_cmd_iproute="/sbin/ip";
+    fi;
+    
+    # Assign local ip variable on non-Mac.
+    vf_local_ip="$(/bin/hostname -I | awk '{print $1}')";
+  fi;
+
+  # ---------------------------------------------------------------
+  # [7] Assign the framework settings defined in the framework.json file.
+
+  # Read the framework json file and assign its values to bash variables. 
+  # Prepend with 'vj' to denote source as json file.
+  # e.g.: vj_framework_name --> bash-x
+  f_json_recurse "$(cat ${vf_path_framework_home}json/framework.json)" "vj";
+
+ # ---------------------------------------------------------------
+  # [8] Assign are framework variables using function 'f_arrays_set_var'.
+
+  # From now on all variables in the framework and project should be assigned using this function.
+  # - These variables are added to the array 'A_framework_vars' and when added they are also declared as a bash variable.
+  # - All these variables will have global scope.
+  # - Exceptions to using this function are variables assigned with local scope.
+  # - For those use the reserved bash keyword 'local'.
+
+  # Path variables for framework.
+  f_arrays_set_var "vf_path_before"           "${vf_path_before}";
+  f_arrays_set_var "vf_script_name"           "${vf_script_name}";
+  f_arrays_set_var "vf_script_path"           "${vf_script_path}";
+  f_arrays_set_var "vf_path_framework_home"   "${vf_path_framework_home}";
+  f_arrays_set_var "vf_path_framework_parent" "${vf_path_framework_parent}";
+  
+  # Either 'minimised' or empty.
+  f_arrays_set_var "vf_bashx_minified"        "${vf_bashx_minified}";
+
+  # List of all framework files to source.
+  f_arrays_set_var "vf_framework_source_list" "${vf_framework_source_list}";
+  
+  # Locally installed bash version.
+  f_arrays_set_var "vf_bash_version"          "${vf_bash_version}";
+
+  # Which linux OS is running locally.
+  f_arrays_set_var "vf_os_identify"           "${vf_os_identify}";
+
+  f_arrays_set_var "jq"                       "${jq}";
+  f_arrays_set_var "vf_cmd_sed"               "${vf_cmd_sed}";
+  f_arrays_set_var "vf_cmd_date"              "${vf_cmd_date}";
+  f_arrays_set_var "vf_cmd_awk"               "${vf_cmd_awk}";
+  f_arrays_set_var "vf_cmd_grep"              "${vf_cmd_grep}";
+  f_arrays_set_var "vf_cmd_iproute"           "${vf_cmd_iproute}";
+  f_arrays_set_var "vf_cmd_docker"            "${vf_cmd_docker}";
+
+  # The local ip of the machine running bash-x.
+  f_arrays_set_var "vf_local_ip"              "${vf_local_ip}";
+  
+  # The current stage is set to '0'.
+  # - note this var starts with 'vp_'.
+  f_arrays_set_var "vp_stage_number"          "0";
+  
+  # Assign local machine hostname to variable.
+  f_arrays_set_var "vf_local_hostname"        "$(hostname -f)";
+  f_arrays_set_var "vf_local_hostname_short"  "$(hostname)";
+  
+  # These vars are used for script timing messages.
+  f_arrays_set_var "vf_starttime"             "$(date +%s)";
+  f_arrays_set_var "vf_timestamp"             "$(echo $(date +%F_%T))";
+  
+  # All the flags and switches passed when running the framework. 
+  # Assign manually as this breaks the function 'f_arrays_set_var'.
+  vf_args_passed="$@";
+
+  # Error message display variables. 
+  f_arrays_set_var "vf_status_exitcode"       "0";
+  f_arrays_set_var "vf_status_exitlocation"   "";
+  f_arrays_set_var "vf_status_exithint"       "";
+
+  # Used to determine paths depending on whether minimised version of framework is run or not.
+  f_arrays_set_var "vf_path_projects"         "";
+  f_arrays_set_var "vf_path_bashx"            "";
+  
+  # For assigning dynamic error messages.
+  f_arrays_set_var "vf_dynamic_error_msg"     "";
+  f_arrays_set_var "vp_dynamic_error_msg"     "";
+  
+  # Used for processing flags.
+  f_arrays_set_var "vf_flag_current"          "";
+  f_arrays_set_var "vf_flag_current_value"    "";
+  
+  # For dislpaying git branch info to screen.
+  f_arrays_set_var "vf_git_branch" "";
+  
+ # ---------------------------------------------------------------
+  # [9] Re-assign the 'bash-x-projects' path variables based on runtime conditions. 
+
+  # 'bash-x-projects' folder path to a variable. 
+  # The default setting of '../bash-x-projects' makes it a sibling folder to the parent folder.
+  if [[ "${vj_framework_flags_paths_projects}" == *"../bash-x-projects"* ]];then
+    f_arrays_set_var "vf_path_projects" "${vf_path_framework_parent}/bash-x-projects/";
+  # Otherwise assign it to the absolute path in the framework.json.
+  else
+    f_arrays_set_var "vf_path_projects" "${vj_framework_flags_paths_projects}";
+  fi;
+
+ # ---------------------------------------------------------------
+  # [10] Re-assign the 'bash-x' path variables based on runtime conditions. 
+
+  # The default setting of '../bash-x' makes it a sibling folder to the parent folder.
+  if [[ "${vj_framework_flags_paths_bashx}" == *"../bash-x"* ]];then
+    f_arrays_set_var "vf_path_bashx" "${vf_path_framework_parent}/bash-x/";
+  # Otherwise assign it to the absolute path in the framework.json.
+  else
+    f_arrays_set_var "vf_path_bashx" "${vj_framework_flags_paths_bashx}";
+  fi;
+
+ # ---------------------------------------------------------------
+  # [11] Re-assign git branch variable.
+
+  git_branchname="$(git name-rev --name-only HEAD 2> /dev/null)";
+  if [[ "$?" != "0" ]];then 
+    f_arrays_set_var "vf_git_branch" "git is not available";
+  else
+    f_arrays_set_var "vf_git_branch" "$(git rev-parse --abbrev-ref ${git_branchname})";
+  fi;
+
+ # ---------------------------------------------------------------
+  # [12] Refresh error codes in framework error array.
+
+  # Create the error code array for the framework. 
+  # This is done now as it references some of the above defined variables.
+  f_errors_codes;
+
+  # ---------------------------------------------------------------
+  # [13] Call the framework with the passed params.
+
+  # Do not surround this variable with quotes as this will break the subsequent flag handling!
+  f_framework ${vf_args_passed};
