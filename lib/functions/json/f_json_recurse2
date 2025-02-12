@@ -1,0 +1,75 @@
+function f_json_recurse2() {
+    # Parameters:
+    # - json_content: JSON content as a string.
+    # - key_prefix: Optional prefix for generated keys (e.g., "vj_").
+
+    local json_content="${1}"
+    local key_prefix="${2:-}"
+
+    # Use jq to flatten JSON into key-value pairs for Bash
+    local json_content_map
+    json_content_map=$(jq -r --arg prefix "$key_prefix" '
+        paths(scalars) as $path |
+        ($path | map(tostring) | join("_") | "\($prefix)_\(.)") + "=" + (getpath($path) | @sh)
+    ' <<< "$json_content")
+
+    # Iterate over the generated key-value pairs from jq
+    while read -r json_pair_keyvalue; do
+        # Split the key-value pair
+        local json_pair_key json_pair_value
+        IFS='=' read -r json_pair_key json_pair_value <<< "$json_pair_keyvalue"
+
+        # Clean up single quotes in the value (from `@sh` in jq output)
+        json_pair_value="${json_pair_value//\'/}"
+
+        # Populate arrays based on prefix conventions
+        case "$json_pair_key" in
+            vj_inventory_*)
+                f_arrays_set_var "$json_pair_key" "$json_pair_value"
+                local short_key="${json_pair_key#vj_}"
+                f_arrays_set_var "vp_$short_key" "$json_pair_value"
+                ;;
+
+            vj_framework_*)
+                f_arrays_set_var "$json_pair_key" "$json_pair_value"
+                local short_key="${json_pair_key#vj_}"
+                f_arrays_set_var "vf_$short_key" "$json_pair_value"
+                ;;
+
+            vj_project_*)
+                f_arrays_set_var "$json_pair_key" "$json_pair_value"
+                local short_key="${json_pair_key#vj_}"
+                f_arrays_set_var "vp_$short_key" "$json_pair_value"
+                ;;
+
+            vj_help_*)
+                A_json_help["$json_pair_key"]="$json_pair_value"
+                if [[ "$json_pair_key" == *"_shortflag" ]] || [[ "$json_pair_key" == *"_about" ]] || [[ "$json_pair_key" == *"_type" ]]; then
+                    local short_key="${json_pair_key#vj_}"
+                    f_arrays_set_var "vp_$short_key" "$json_pair_value"
+                elif [[ "$json_pair_key" == *"_default" ]]; then
+                    local base_key="${json_pair_key%_default}"
+                    f_arrays_set_var "$base_key" "$json_pair_value"
+                    local short_key="${base_key#vj_}"
+                    f_arrays_set_var "vp_$short_key" "$json_pair_value"
+                fi
+                ;;
+
+            vj_errors_*)
+                A_json_errors["$json_pair_key"]="$json_pair_value"
+                ;;
+
+            arrays_*)
+                A_json_arrays["$json_pair_key"]="$json_pair_value"
+                ;;
+
+      *)
+        # All other matches go to the project code.
+        fp_project_custom_json "${json_pair_key}" "${json_pair_value}"
+        ;;
+        esac
+
+        # Store in main associative array for reference
+        A_variables_all["$json_pair_key"]="$json_pair_value"
+    done <<< "$json_content_map"
+}
